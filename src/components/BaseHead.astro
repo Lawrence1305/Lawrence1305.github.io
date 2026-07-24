@@ -1,0 +1,16 @@
+---
+import { SITE_TITLE, SITE_DESCRIPTION } from "../config";
+
+const { title = SITE_TITLE, description = SITE_DESCRIPTION, image, ogType } = Astro.props;
+---
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{title}</title>
+<meta name="description" content={description} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:type" content={ogType || "website"} />
+<meta property="og:site_name" content={SITE_TITLE} />
+{image && <meta property="og:image" content={image} />}
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="sitemap" href="/sitemap-index.xml" />
