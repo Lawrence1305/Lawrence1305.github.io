@@ -1,0 +1,44 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { getCollection } from "astro:content";
+
+const allProjects = (await getCollection("projects")).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+---
+
+<BaseLayout title="项目 — Lawrence" description="Lawrence的技术项目。">
+  <h1 class="text-3xl font-bold mb-2">项目</h1>
+  <p class="text-base-content/70 mb-8">教学工具与开发项目</p>
+
+  {allProjects.length === 0 && <p class="text-center py-12 text-base-content/50">还没有项目。</p>}
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {allProjects.map((project) => (
+      <div class="card bg-base-200 shadow-md">
+        {project.data.heroImage && (
+          <img src={project.data.heroImage} alt={project.data.title} class="w-full h-48 object-cover rounded-t-lg" />
+        )}
+        <div class="card-body">
+          <h2 class="card-title">{project.data.title}</h2>
+          <p class="text-base-content/70">{project.data.description}</p>
+          {project.data.techStack && (
+            <div class="flex gap-2 flex-wrap mt-2">
+              {project.data.techStack.map((tech) => (
+                <span class="badge badge-outline">{tech}</span>
+              ))}
+            </div>
+          )}
+          <div class="card-actions mt-4">
+            {project.data.demoUrl && (
+              <a href={project.data.demoUrl} target="_blank" class="btn btn-primary btn-sm">在线体验</a>
+            )}
+            {project.data.repoUrl && (
+              <a href={project.data.repoUrl} target="_blank" class="btn btn-outline btn-sm">源代码</a>
+            )}
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+</BaseLayout>
