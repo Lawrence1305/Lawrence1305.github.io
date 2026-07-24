@@ -1,0 +1,64 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getCollection } from "astro:content";
+import createSlug from "../../lib/createSlug";
+
+export async function getStaticPaths() {
+  const allPosts = (await getCollection("blog")).sort(
+    (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+  );
+  const pageSize = 6;
+  const totalPages = Math.max(1, Math.ceil(allPosts.length / pageSize));
+  return Array.from({ length: totalPages }, (_, i) => ({
+    params: { page: i === 0 ? undefined : String(i + 1) },
+  }));
+}
+
+const allPosts = (await getCollection("blog")).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+
+const pageSize = 6;
+const { page } = Astro.params;
+const currentPage = page ? Number(page) : 1;
+const totalPages = Math.max(1, Math.ceil(allPosts.length / pageSize));
+const posts = allPosts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+---
+
+<BaseLayout title="博客 — Lawrence" description="Lawrence的博客文章。">
+  <h1 class="text-3xl font-bold mb-2">博客</h1>
+  <p class="text-base-content/70 mb-8">分享教学心得、备考技巧和技术笔记</p>
+
+  {posts.length === 0 && <p class="text-center py-12 text-base-content/50">还没有文章。</p>}
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {posts.map((post) => (
+      <a href={"/blog/" + createSlug(post.data.title, post.slug)} class="card bg-base-200 hover:bg-base-300 transition-colors">
+        {post.data.heroImage && (
+          <img src={post.data.heroImage} alt={post.data.title} class="w-full h-48 object-cover rounded-t-lg" />
+        )}
+        <div class="card-body">
+          <h2 class="card-title">{post.data.title}</h2>
+          <p class="text-base-content/70">{post.data.description}</p>
+          <div class="card-actions justify-between items-center mt-2">
+            <span class="text-sm text-base-content/50">{post.data.pubDate.toLocaleDateString("zh-CN")}</span>
+            {post.data.badge && <span class="badge badge-primary badge-sm">{post.data.badge}</span>}
+          </div>
+        </div>
+      </a>
+    ))}
+  </div>
+
+  {totalPages > 1 && (
+    <div class="join mt-8 flex justify-center">
+      {Array.from({ length: totalPages }, (_, i) => (
+        <a
+          href={i === 0 ? "/blog" : `/blog/${i + 1}`}
+          class={`join-item btn ${currentPage === i + 1 ? "btn-active" : ""}`}
+        >
+          {i + 1}
+        </a>
+      ))}
+    </div>
+  )}
+</BaseLayout>

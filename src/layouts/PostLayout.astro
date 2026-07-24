@@ -1,0 +1,18 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import type { BlogSchema } from "../content/config";
+import dayjs from "dayjs";
+
+const { post } = Astro.props as { post: { data: BlogSchema; body: string; slug: string } };
+---
+
+<BaseLayout title={post.data.title + " — Lawrence"} description={post.data.description} ogType="article">
+  <article class="prose prose-lg max-w-none">
+    <h1>{post.data.title}</h1>
+    <div class="text-base-content/60 text-sm mb-8">
+      {dayjs(post.data.pubDate).format("YYYY年MM月DD日")}
+    </div>
+    {post.data.badge && <span class="badge badge-primary mb-4">{post.data.badge}</span>}
+    <slot />
+  </article>
+</BaseLayout>
