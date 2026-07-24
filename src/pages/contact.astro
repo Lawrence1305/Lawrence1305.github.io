@@ -1,0 +1,47 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="联系方式 — Lawrence" description="联系Lawrence。">
+  <h1 class="text-3xl font-bold mb-8">联系我</h1>
+
+  <p class="mb-8">如果您有任何问题或合作意向，请通过以下方式联系我：</p>
+
+  <div class="space-y-4 mb-10">
+    <div class="flex items-center gap-3">
+      <span class="text-primary font-bold min-w-[4rem]">邮箱</span>
+      <a href="mailto:your.email@example.com" class="link link-primary">your.email@example.com</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-primary font-bold min-w-[4rem]">GitHub</span>
+      <a href="https://github.com/Lawrence1305" target="_blank" class="link link-primary">github.com/Lawrence1305</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-primary font-bold min-w-[4rem]">LinkedIn</span>
+      <a href="https://www.linkedin.com/in/yourusername" target="_blank" class="link link-primary">LinkedIn主页</a>
+    </div>
+  </div>
+
+  <h2 class="text-2xl font-bold mb-4">给我留言</h2>
+  <form class="space-y-4 max-w-lg">
+    <div class="form-control">
+      <label class="label" for="name">
+        <span class="label-text">姓名</span>
+      </label>
+      <input type="text" id="name" name="name" required class="input input-bordered" />
+    </div>
+    <div class="form-control">
+      <label class="label" for="email">
+        <span class="label-text">邮箱</span>
+      </label>
+      <input type="email" id="email" name="email" required class="input input-bordered" />
+    </div>
+    <div class="form-control">
+      <label class="label" for="message">
+        <span class="label-text">留言</span>
+      </label>
+      <textarea id="message" name="message" rows="5" required class="textarea textarea-bordered"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">发送</button>
+  </form>
+</BaseLayout>
