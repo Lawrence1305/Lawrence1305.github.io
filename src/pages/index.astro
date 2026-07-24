@@ -4,6 +4,8 @@ import SubjectCard from "../components/SubjectCard.astro";
 import HorizontalCard from "../components/HorizontalCard.astro";
 import { getCollection } from "astro:content";
 
+const featuredProjects = (await getCollection("projects")).filter((p) => p.data.featured);
+
 const posts = (await getCollection("blog")).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
@@ -55,6 +57,32 @@ const subjectCards = [
       <p class="flex items-start gap-2"><span class="text-primary font-bold">✓</span> 提供详细的学习资料和练习题，帮助学生巩固所学知识</p>
     </div>
   </div>
+
+  <!-- Featured Projects -->
+  {
+    featuredProjects.length > 0 && (
+      <div class="mt-16">
+        <h2 class="text-3xl font-bold mb-6">精选项目</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {featuredProjects.map((project) => (
+            <a href="/projects" class="card bg-base-200 hover:bg-base-300 transition-colors">
+              <div class="card-body">
+                <h3 class="card-title text-lg">{project.data.title}</h3>
+                <p class="text-base-content/70 text-sm">{project.data.description}</p>
+                {project.data.techStack && (
+                  <div class="flex gap-1 flex-wrap mt-2">
+                    {project.data.techStack.slice(0, 3).map((tech) => (
+                      <span class="badge badge-outline badge-xs">{tech}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   <!-- Latest Blog Posts -->
   {
