@@ -1,0 +1,16 @@
+---
+const { title, img, desc, url, target = "_blank", badge } = Astro.props;
+---
+
+<div class="py-4">
+  <div class="flex gap-4 items-start">
+    {img && <img src={img} alt={title} class="w-24 h-24 object-cover rounded-lg flex-shrink-0" />}
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 flex-wrap">
+        <a href={url} target={target} class="text-xl font-bold hover:text-primary transition-colors">{title}</a>
+        {badge && <span class="badge badge-primary badge-sm">{badge}</span>}
+      </div>
+      <p class="text-base-content/60 mt-1">{desc}</p>
+    </div>
+  </div>
+</div>

@@ -1,6 +1,86 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import SubjectCard from "../components/SubjectCard.astro";
+import HorizontalCard from "../components/HorizontalCard.astro";
+import { getCollection } from "astro:content";
+
+const posts = await (async () => {
+  try {
+    return (await getCollection("blog")).sort(
+      (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+    );
+  } catch {
+    return [];
+  }
+})();
+const latestPosts = posts.slice(0, 3);
+
+const subjectCards = [
+  { title: "AP 物理", description: "专注AP Physics 1, 2和C (Mechanics, E&M)课程辅导，帮助学生掌握物理核心概念和解题技巧。", formula: "F = ma" },
+  { title: "AP 数学", description: "提供AP Calculus AB/BC和AP Statistics专业指导，通过系统化方法提高学生的数学思维。", formula: "∫f(x)dx" },
+  { title: "A-Level 物理", description: "全面覆盖A-Level物理课程，着重培养学生的实验技能和理论应用能力。", formula: "E = hf" },
+  { title: "A-Level 数学", description: "针对A-Level数学和Further Mathematics提供深入辅导，为学生未来的学术发展打下坚实基础。", formula: "eiπ + 1 = 0" },
+];
 ---
+
 <BaseLayout>
-  <h1 class="text-3xl font-bold">测试</h1>
+  <!-- Hero -->
+  <div class="pb-12 mt-5">
+    <div class="text-5xl font-bold leading-tight">
+      AP与A-Level<br />数学物理专业辅导
+    </div>
+    <div class="text-xl py-3 text-base-content/70">
+      帮助学生掌握核心概念，提升解题能力，成功应对国际考试挑战
+    </div>
+    <div class="py-2 text-lg">
+      也热衷于用代码构建教育工具，让教学更加高效。
+    </div>
+    <div class="mt-8 flex gap-4">
+      <a class="btn btn-primary" href="/contact">预约咨询</a>
+      <a class="btn btn-outline" href="/projects">查看项目</a>
+    </div>
+  </div>
+
+  <!-- Subject Cards -->
+  <div class="mt-16">
+    <h2 class="text-3xl font-bold mb-6">我的专业领域</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {subjectCards.map((card) => (
+        <SubjectCard title={card.title} description={card.description} formula={card.formula} />
+      ))}
+    </div>
+  </div>
+
+  <!-- Why Choose Me -->
+  <div class="mt-16">
+    <h2 class="text-3xl font-bold mb-6">为什么选择我的辅导</h2>
+    <div class="bg-base-200 rounded-lg p-6 space-y-3">
+      <p class="flex items-start gap-2"><span class="text-primary font-bold">✓</span> 多年国际考试辅导经验，熟悉AP和A-Level考试要求和评分标准</p>
+      <p class="flex items-start gap-2"><span class="text-primary font-bold">✓</span> 个性化教学方案，根据学生的学习风格和需求调整教学策略</p>
+      <p class="flex items-start gap-2"><span class="text-primary font-bold">✓</span> 强调概念理解与应用，而非单纯的题海战术</p>
+      <p class="flex items-start gap-2"><span class="text-primary font-bold">✓</span> 提供详细的学习资料和练习题，帮助学生巩固所学知识</p>
+    </div>
+  </div>
+
+  <!-- Latest Blog Posts -->
+  {
+    latestPosts.length > 0 && (
+      <div class="mt-16">
+        <h2 class="text-3xl font-bold mb-6">最新博客</h2>
+        {latestPosts.map((post) => (
+          <>
+            <HorizontalCard
+              title={post.data.title}
+              img={post.data.heroImage}
+              desc={post.data.description}
+              url={"/blog/" + post.slug}
+              target="_self"
+              badge={post.data.badge}
+            />
+            <div class="divider my-0" />
+          </>
+        ))}
+      </div>
+    )
+  }
 </BaseLayout>

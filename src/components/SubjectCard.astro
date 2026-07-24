@@ -1,0 +1,11 @@
+---
+const { title, description, formula } = Astro.props;
+---
+
+<div class="card bg-base-100 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+  <div class="card-body">
+    <h3 class="card-title text-primary">{title}</h3>
+    <p class="text-base-content/70">{description}</p>
+    <div class="mt-2 font-serif italic text-2xl text-secondary">{formula}</div>
+  </div>
+</div>
