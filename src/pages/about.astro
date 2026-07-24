@@ -1,0 +1,63 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="关于我 — Lawrence" description="了解Lawrence的教学背景、教育理念和学生反馈。">
+  <h1 class="text-3xl font-bold mb-8">关于我</h1>
+
+  <div class="flex flex-col md:flex-row gap-8 items-start">
+    <img
+      src="/images/profile.jpg"
+      alt="Lawrence的照片"
+      class="w-48 h-48 object-cover rounded-full border-4 border-primary flex-shrink-0"
+    />
+    <div class="space-y-4">
+      <p>
+        作为一名资深的数学和物理教师，我专注于为准备国际考试的学生提供AP和A-Level课程辅导。
+        我相信每个学生都有自己独特的学习方式，我的目标是帮助他们找到最适合自己的学习路径。
+      </p>
+      <p>
+        我拥有数学和物理学背景，并且在国际教育领域有多年的教学经验。
+        通过与来自不同背景的学生合作，我开发了一套有效的教学方法，帮助学生不仅能应对考试，更能真正理解和应用所学知识。
+      </p>
+    </div>
+  </div>
+
+  <div class="mt-10">
+    <h2 class="text-2xl font-bold mb-4">教育背景</h2>
+    <div class="bg-base-200 rounded-lg p-6 space-y-2">
+      <p class="flex items-center gap-2"><span class="text-primary">•</span> 数学理学硕士</p>
+      <p class="flex items-center gap-2"><span class="text-primary">•</span> 物理教育学学士</p>
+      <p class="flex items-center gap-2"><span class="text-primary">•</span> AP和A-Level考官培训认证</p>
+    </div>
+  </div>
+
+  <div class="mt-10">
+    <h2 class="text-2xl font-bold mb-4">教学理念</h2>
+    <p>
+      我相信数学和物理不应该只是抽象的概念和公式，而应该是解决实际问题的工具。
+      我的课程注重培养学生的批判性思维和问题解决能力，帮助他们建立对学科的信心和热情。
+    </p>
+    <p class="mt-2">
+      无论是解决复杂的微积分问题，还是理解量子物理的基本原理，我都致力于让学习过程变得清晰、有条理且引人入胜。
+    </p>
+  </div>
+
+  <div class="mt-10">
+    <h2 class="text-2xl font-bold mb-6">学生反馈</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="card bg-base-200">
+        <div class="card-body">
+          <p>"Lawrence老师的教学方法让我对物理有了全新的理解。通过他的辅导，我在AP物理C考试中获得了满分。"</p>
+          <p class="font-bold mt-2">— 张同学，现就读于MIT</p>
+        </div>
+      </div>
+      <div class="card bg-base-200">
+        <div class="card-body">
+          <p>"数学一直是我的弱项，但Lawrence老师的耐心指导让我建立了信心，最终在A-Level数学考试中获得了A*。"</p>
+          <p class="font-bold mt-2">— 李同学，现就读于剑桥大学</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
