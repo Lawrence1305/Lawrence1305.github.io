@@ -1,0 +1,42 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import ExamTimetable from "../components/exams/ExamTimetable.astro";
+import examsRaw from "../data/exams.json";
+import metaRaw from "../data/meta.json";
+import type { ExamRow, MetaData } from "../scripts/types";
+
+const exams = examsRaw as ExamRow[];
+const meta = metaRaw as MetaData;
+const boardName: Record<string, string> = {
+  cambridge: "剑桥国际",
+  oxfordaqa: "牛津AQA",
+  pearson: "培生爱德思",
+};
+const updatedAt = meta.generatedAt
+  ? new Date(meta.generatedAt).toLocaleString("zh-CN", { hour12: false })
+  : "";
+---
+
+<BaseLayout
+  title="考试时间表 - Lawrence"
+  description="British Council 三大考局考试时间表查询与个人 Excel 导出"
+>
+  <h1 class="text-3xl font-bold mb-2">考试时间表</h1>
+  <p class="mb-1 text-base-content/70">
+    数据来源:英国文化教育协会各考局《报名指南》PDF,自动解析。
+  </p>
+  <p class="mb-6 text-sm text-base-content/50">
+    数据更新于 {updatedAt} · 共 {exams.length} 场考试
+  </p>
+  <ul class="mb-6 text-sm text-base-content/50 space-y-1 list-none pl-0">
+    {Object.entries(meta.sources ?? {}).map(([board, src]) => (
+      <li>
+        {boardName[board]}报名指南:
+        <a class="link link-primary" href={src.pdf} target="_blank" rel="noopener">
+          查看 PDF
+        </a>
+      </li>
+    ))}
+  </ul>
+  <ExamTimetable exams={exams} meta={meta} />
+</BaseLayout>

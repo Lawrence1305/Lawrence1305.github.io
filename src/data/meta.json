@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-08-03T13:45:15+00:00",
+  "season": {
+    "cambridge": "October/November 2026 Series",
+    "oxfordaqa": "2026 May/June Series",
+    "pearson": "2026 October/November Session - IAL"
+  },
+  "sources": {
+    "cambridge": {
+      "page": "https://www.britishcouncil.cn/exams/school/Cambridge%20International",
+      "pdf": "https://cn.live.solas.britishcouncil.digital/sites/default/files/b2c_jian_qiao_guo_ji_kao_shi_ge_ren_kao_sheng_bao_ming_zhi_nan_octnov_2026_0.pdf"
+    },
+    "oxfordaqa": {
+      "page": "https://www.britishcouncil.cn/exams/school/oxford-international-aqa-examinations",
+      "pdf": "https://cn.live.solas.britishcouncil.digital/sites/default/files/b2c_niu_jin_aqakao_shi_bao_ming_zhi_nan__0.pdf"
+    },
+    "pearson": {
+      "page": "https://www.britishcouncil.cn/exams/school/pearson",
+      "pdf": "https://cn.live.solas.britishcouncil.digital/sites/default/files/b2c-pei_sheng_ai_de_si_kao_shi_bao_ming_zhi_nan_-on2026.pdf",
+      "igcseTimetable": "https://qualifications.pearson.com/content/dam/pdf/Support/Examination-timetables-for-Edexcel-International-GCSE/intgcse-nov-2026-final.xlsx",
+      "ialTimetable": "https://qualifications.pearson.com/content/dam/pdf/Support/Examination-timetables-for-International-Advanced-Levels/ial-october2026-final.xlsx"
+    }
+  }
+}
