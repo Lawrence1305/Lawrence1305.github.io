@@ -25,3 +25,9 @@ pnpm-debug.log*
 
 # agent working data (brainstorm sessions, etc.)
 .superpowers/
+
+# pdf cache for the exam timetable sync
+.cache/
+
+# isolated worktrees
+.worktrees/
