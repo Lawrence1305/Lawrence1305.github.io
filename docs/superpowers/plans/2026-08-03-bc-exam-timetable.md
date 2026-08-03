@@ -243,7 +243,7 @@ PDF_ANCHOR_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 TAG_RE = re.compile(r"<[^>]+>")
-GUIDE_KEYWORDS = ("报名指南", "registration", "guide", "bao_ming_zhi_nan")
+GUIDE_KEYWORDS = ("报名指南", "registration", "bao_ming_zhi_nan")
 
 
 def fetch_html(page_url: str) -> str:
@@ -687,7 +687,13 @@ def parse_rows(pdf_path: str) -> list[dict]:
                     continue
                 match = SYLLABUS_RE.match(line)
                 if match:
-                    syllabus = {"code": match.group(1), "name": match.group(2).strip()}
+                    name = re.sub(
+                        r"\s*Detailed Component Information.*$",
+                        "",
+                        match.group(2),
+                        flags=re.IGNORECASE,
+                    ).strip()
+                    syllabus = {"code": match.group(1), "name": name}
                     option = None
                     continue
                 match = OPTION_RE.match(line)
@@ -701,9 +707,10 @@ def parse_rows(pdf_path: str) -> list[dict]:
                     if component and syllabus:
                         rows.append(_row(syllabus, option, component))
                     continue
-                if line.startswith(SKIP_STARTS) or CARRIED_FORWARD_RE.match(line):
-                    continue
                 component = COMPONENT_RE.match(line)
+                if not component and line.startswith(SKIP_STARTS):
+                    # 部分试卷行与注释(如同考季限制)在同一行,需在行内查找
+                    component = COMPONENT_RE.search(line)
                 if component and syllabus and option:
                     rows.append(_row(syllabus, option, component))
     return rows
@@ -773,6 +780,45 @@ def test_oxfordaqa_gcse_rows():
     assert chemistry["level"] == "IG"
     assert chemistry["subject"] == "Chemistry"
     assert chemistry["date"] == "2026-05-07"
+
+
+def test_oxfordaqa_gcse_split_title_rows():
+    rows = oxfordaqa.parse_rows(str(FIXTURES / "oxfordaqa_timetable.pdf"))
+    by_code = _index(rows)
+    biz = by_code["9225/1"]
+    assert biz["subject"] == "Business"
+    assert biz["componentTitle"] == (
+        "Paper 1: Influences of Operations and Human Resource on Business Activity"
+    )
+    assert biz["date"] == "2026-04-29"
+    assert biz["startTime"] == "15:00"
+
+
+def test_oxfordaqa_gcse_option_variants():
+    rows = oxfordaqa.parse_rows(str(FIXTURES / "oxfordaqa_timetable.pdf"))
+    by_code = _index(rows)
+    combi = by_code["9204/CC"]
+    assert combi["optionCode"] == "9204C"
+    assert combi["subject"] == "Combined Science Double Award"
+    geo = by_code["9230/2"]
+    assert geo["optionCode"] == "9230"
+    esl = by_code["9280/W"]
+    assert esl["subject"] == "English as a Second Language"
+
+
+def test_oxfordaqa_gcse_core_rows():
+    rows = oxfordaqa.parse_rows(str(FIXTURES / "oxfordaqa_timetable.pdf"))
+    by_code = _index(rows)
+    core = by_code["9221"]
+    assert core["subject"] == "CORE Biology (short course)"
+    assert core["componentTitle"] == "Written Paper"
+    assert core["date"] == "2026-04-27"
+
+
+def test_oxfordaqa_option_code_not_leaked():
+    rows = oxfordaqa.parse_rows(str(FIXTURES / "oxfordaqa_timetable.pdf"))
+    by_code = _index(rows)
+    assert by_code["9214/1"]["optionCode"] != "9225"
 ```
 
 - [ ] **Step 2: 运行测试确认失败**
@@ -807,16 +853,20 @@ ALEVEL_ROW_RE = re.compile(
     r"[\d,]+\.\d{2}$"
 )
 
-GCSE_COMPONENT_RE = re.compile(
-    r"^(?P<code>\d{4}/\d+)\s+"
+# IGCSE: 组合编码 + 试卷编码 + 名称 在同一行(如 9204C 9204/CC Paper 2: ...)
+IG_INLINE_RE = re.compile(
+    r"^(?P<option>\d{4}[A-Z]?)\s+"
+    r"(?P<code>\d{4}/[A-Z0-9]+)\s+"
     r"(?P<title>.+?)\s+"
     rf"(?P<duration>{DURATION_PATTERN})\s+"
     r"(?P<date>\d{1,2}-[A-Z][a-z]{2}-\d{4})\s+"
     r"(?P<time>\d{1,2}:\d{2})(?:\s+[\d,]+\.\d{2}\s+[\d,]+\.\d{2})?$"
 )
 
+# IGCSE CORE: 组合编码 + 单元编码 + 名称 + 内联费用(如 9221 9221 Written Paper ...)
 CORE_ROW_RE = re.compile(
     r"^(?P<option>\d{4})\s+"
+    r"(?P<unit>\d{4})\s+"
     r"(?P<title>.+?)\s+"
     rf"(?P<duration>{DURATION_PATTERN})\s+"
     r"(?P<date>\d{1,2}-[A-Z][a-z]{2}-\d{4})\s+"
@@ -825,18 +875,40 @@ CORE_ROW_RE = re.compile(
     r"[\d,]+\.\d{2}$"
 )
 
-FEE_ROW_RE = re.compile(
-    r"^(?P<option>\d{4})\s+[\d,]+\.\d{2}\s+[\d,]+\.\d{2}$"
+# IGCSE 标准行: 试卷编码 + 名称(如 9201/1 Paper 1: Biology ...)
+IG_COMPONENT_RE = re.compile(
+    r"^(?P<code>\d{4}/[A-Z0-9]+)\s+"
+    r"(?P<title>.+?)\s+"
+    rf"(?P<duration>{DURATION_PATTERN})\s+"
+    r"(?P<date>\d{1,2}-[A-Z][a-z]{2}-\d{4})\s+"
+    r"(?P<time>\d{1,2}:\d{2})(?:\s+[\d,]+\.\d{2}\s+[\d,]+\.\d{2})?$"
 )
 
+# IGCSE 标题拆分行: 试卷编码 + 时长/日期/时间,名称在相邻行(如 9225/1 2h ...)
+IG_NO_TITLE_RE = re.compile(
+    r"^(?P<code>\d{4}/[A-Z0-9]+)\s+"
+    rf"(?P<duration>{DURATION_PATTERN})\s+"
+    r"(?P<date>\d{1,2}-[A-Z][a-z]{2}-\d{4})\s+"
+    r"(?P<time>\d{1,2}:\d{2})$"
+)
+
+# IGCSE 费用行: 组合编码 + 两个价格(组合编码可带字母后缀,如 9260C)
+IG_FEE_RE = re.compile(
+    r"^(?P<option>\d{4}[A-Z]?)\s+[\d,]+\.\d{2}\s+[\d,]+\.\d{2}$"
+)
+
+TITLE_FRAGMENT_RE = re.compile(r"^Paper \d:")
 LEVEL_MAP = {"1": "AS", "2": "A2"}
-SKIP_RE = re.compile(r"^\d{4}\s*\(合并|The following combinations|同考季内不能")
+SKIP_RE = re.compile(
+    r"^\d{4}\s*\(合并|The following combinations|同考季内不能|Candidates may"
+)
 
 SUBJECT_RE = re.compile(r"^[A-Za-z][A-Za-z &()'-]{2,}$")
 NON_SUBJECT_HINTS = (
     "exam timetable", "pricing", "registration", "standard", "late stage",
     "access", "other access", "rmb", "fee", "unit", "option", "duration",
-    "test date", "starting", "series:", "考试", "报名", "人民币", "含税",
+    "test date", "starting", "series:", "candidates", "考试", "报名",
+    "人民币", "含税",
 )
 
 
@@ -847,10 +919,34 @@ def _is_subject_header(line: str) -> bool:
     return not any(hint in low for hint in NON_SUBJECT_HINTS)
 
 
+def _is_title_fragment(line: str) -> bool:
+    return _is_subject_header(line)
+
+
+def _append_row(rows: list[dict], subject: str, option: str, level: str,
+                code: str, title: str, duration: str, date: str, time: str) -> None:
+    rows.append(
+        {
+            "board": "oxfordaqa",
+            "level": level,
+            "syllabusCode": "",
+            "subject": subject,
+            "optionCode": option,
+            "componentCode": code,
+            "componentTitle": title,
+            "duration": duration,
+            "date": date,
+            "startTime": time,
+            "sourcePdf": "",
+        }
+    )
+
+
 def parse_rows(pdf_path: str) -> list[dict]:
     rows: list[dict] = []
     subject = ""
     option: dict | None = None
+    pending_title = ""
 
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
@@ -864,69 +960,78 @@ def parse_rows(pdf_path: str) -> list[dict]:
                 i += 1
                 if not line or SKIP_RE.match(line):
                     continue
-                if _is_subject_header(line):
-                    subject = line
-                    continue
+
                 match = ALEVEL_ROW_RE.match(line)
                 if match:
                     g = match.groupdict()
-                    rows.append(
-                        {
-                            "board": "oxfordaqa",
-                            "level": LEVEL_MAP[g["level"]],
-                            "syllabusCode": "",
-                            "subject": subject,
-                            "optionCode": g["option"],
-                            "componentCode": g["option"],
-                            "componentTitle": g["title"],
-                            "duration": parse_duration(g["duration"]),
-                            "date": parse_date(g["date"], "%d-%b-%Y"),
-                            "startTime": parse_time(g["time"]),
-                            "sourcePdf": "",
-                        }
+                    _append_row(
+                        rows, subject, g["option"], LEVEL_MAP[g["level"]],
+                        g["option"], g["title"], parse_duration(g["duration"]),
+                        parse_date(g["date"], "%d-%b-%Y"), parse_time(g["time"]),
                     )
                     continue
-                match = FEE_ROW_RE.match(line)
+
+                match = IG_INLINE_RE.match(line)
                 if match:
-                    option = {"optionCode": match.group("option")}
+                    g = match.groupdict()
+                    _append_row(
+                        rows, subject, g["option"], "IG", g["code"], g["title"],
+                        parse_duration(g["duration"]),
+                        parse_date(g["date"], "%d-%b-%Y"), parse_time(g["time"]),
+                    )
                     continue
+
                 match = CORE_ROW_RE.match(line)
                 if match:
                     g = match.groupdict()
-                    rows.append(
-                        {
-                            "board": "oxfordaqa",
-                            "level": "IG",
-                            "syllabusCode": "",
-                            "subject": subject,
-                            "optionCode": g["option"],
-                            "componentCode": g["option"],
-                            "componentTitle": g["title"],
-                            "duration": parse_duration(g["duration"]),
-                            "date": parse_date(g["date"], "%d-%b-%Y"),
-                            "startTime": parse_time(g["time"]),
-                            "sourcePdf": "",
-                        }
+                    _append_row(
+                        rows, subject, g["option"], "IG", g["unit"], g["title"],
+                        parse_duration(g["duration"]),
+                        parse_date(g["date"], "%d-%b-%Y"), parse_time(g["time"]),
                     )
                     continue
-                match = GCSE_COMPONENT_RE.match(line)
+
+                match = IG_COMPONENT_RE.match(line)
                 if match:
                     g = match.groupdict()
-                    rows.append(
-                        {
-                            "board": "oxfordaqa",
-                            "level": "IG",
-                            "syllabusCode": "",
-                            "subject": subject,
-                            "optionCode": (option or {}).get("optionCode", ""),
-                            "componentCode": g["code"],
-                            "componentTitle": g["title"],
-                            "duration": parse_duration(g["duration"]),
-                            "date": parse_date(g["date"], "%d-%b-%Y"),
-                            "startTime": parse_time(g["time"]),
-                            "sourcePdf": "",
-                        }
+                    _append_row(
+                        rows, subject, (option or {}).get("optionCode", ""),
+                        "IG", g["code"], g["title"], parse_duration(g["duration"]),
+                        parse_date(g["date"], "%d-%b-%Y"), parse_time(g["time"]),
                     )
+                    continue
+
+                match = IG_NO_TITLE_RE.match(line)
+                if match:
+                    g = match.groupdict()
+                    title = pending_title
+                    if i < len(lines) and _is_title_fragment(lines[i]):
+                        title = f"{title} {lines[i]}".strip()
+                        i += 1
+                    _append_row(
+                        rows, subject, (option or {}).get("optionCode", ""),
+                        "IG", g["code"], title or g["code"],
+                        parse_duration(g["duration"]),
+                        parse_date(g["date"], "%d-%b-%Y"), parse_time(g["time"]),
+                    )
+                    pending_title = ""
+                    continue
+
+                match = IG_FEE_RE.match(line)
+                if match:
+                    option = {"optionCode": match.group("option")}
+                    pending_title = ""
+                    continue
+
+                if TITLE_FRAGMENT_RE.match(line):
+                    pending_title = line
+                    continue
+
+                if _is_subject_header(line):
+                    subject = line
+                    option = None
+                    pending_title = ""
+                    continue
     return rows
 ```
 
@@ -1784,3 +1889,15 @@ git status
 ```
 
 如有未提交变更,单独提交并说明原因。
+
+---
+
+## 执行期修订(2026-08-03)
+
+1. **等级分组**:数据模型新增 `levelGroup`(`IGCSE` | `A Level`),由同步脚本统一计算。剑桥/牛津AQA 的 `IG` → `IGCSE`,`A`/`AS`/`A2` → `A Level`;培生报名指南行(IAL,`level` 为空)→ `A Level`,官方 IGCSE 行(`level="IG"`)→ `IGCSE`。前端等级筛选改为「全部 / IGCSE / A Level」。
+
+2. **中文科目搜索**:新增 `src/scripts/labels.ts` 科目中英文映射;搜索同时匹配英文与中文,科目列表和 Excel 显示「English · 中文」。
+
+3. **培生 IGCSE 数据**:同步脚本新增 Pearson 官方时间表来源(`qualifications.pearson.com`),抓取 International GCSE 与 International A Level 的 xlsx「All papers」表。IGCSE 行(82 条)并入数据;IAL 行用于与报名指南逐条核对日期(36/36 一致)。官方时间表仅提供 Morning/Afternoon/Evening/Window 时段,`startTime` 留空、`session` 字段存时段,前端显示为上午/下午/晚上/时间段。
+
+4. **下载容错**:PDF/xlsx 下载失败自动重试 3 次;仍失败且存在缓存时复用缓存并告警(不使同步失败);`--offline` 跳过下载。
