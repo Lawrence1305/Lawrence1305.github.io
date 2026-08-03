@@ -32,6 +32,20 @@ PDF_ANCHOR_RE = re.compile(
 TAG_RE = re.compile(r"<[^>]+>")
 GUIDE_KEYWORDS = ("报名指南", "registration", "bao_ming_zhi_nan")
 
+PEARSON_TIMETABLES_URL = (
+    "https://qualifications.pearson.com/en/support/"
+    "support-topics/exams/exam-timetables.html"
+)
+PEARSON_ASSET_TITLE_RE = re.compile(
+    r'<span class= "hiddenAssetTitle">\s*([^<]+)</span>'
+)
+PEARSON_ASSET_URL_RE = re.compile(
+    r'<span class= "hiddenAssetUrl">\s*([^<]+)</span>'
+)
+PEARSON_ASSET_EXT_RE = re.compile(
+    r'<span class= "hiddenAssetExtension">\s*([^<]+)</span>'
+)
+
 
 def fetch_html(page_url: str) -> str:
     """Fetch a board page with up to 3 attempts."""
@@ -66,3 +80,22 @@ def find_guide_pdf_urls(html: str) -> list[str]:
         if url not in found:
             found.append(url)
     return found
+
+
+def find_pearson_timetable_assets(html: str) -> list[dict]:
+    """Extract downloadable XLSX timetable assets from the Pearson page."""
+    titles = PEARSON_ASSET_TITLE_RE.findall(html)
+    urls = PEARSON_ASSET_URL_RE.findall(html)
+    exts = PEARSON_ASSET_EXT_RE.findall(html)
+    count = min(len(titles), len(urls), len(exts))
+    assets: list[dict] = []
+    for i in range(count):
+        if exts[i].strip().lower() != "xlsx":
+            continue
+        assets.append(
+            {
+                "title": titles[i].strip(),
+                "url": "https://qualifications.pearson.com" + urls[i].strip(),
+            }
+        )
+    return assets

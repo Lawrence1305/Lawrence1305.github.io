@@ -6,6 +6,7 @@ def _good_row():
     return {
         "board": "cambridge",
         "level": "A2",
+        "levelGroup": "A Level",
         "syllabusCode": "9709",
         "subject": "Mathematics",
         "optionCode": "9709DC",
@@ -14,6 +15,7 @@ def _good_row():
         "duration": "1h50m",
         "date": "2026-10-21",
         "startTime": "08:45",
+        "session": "",
         "sourcePdf": "https://example.com/guide.pdf",
     }
 
@@ -23,6 +25,19 @@ def test_validate_accepts_good_row():
 
 
 def test_validate_rejects_bad_rows():
-    bad = dict(_good_row(), level="BOGUS", date="2026/10/21", startTime="9", componentCode="")
+    bad = dict(
+        _good_row(),
+        level="BOGUS",
+        levelGroup="BOGUS",
+        date="2026/10/21",
+        startTime="",
+        session="",
+        componentCode="",
+    )
     errors = validate_rows([bad])
-    assert len(errors) >= 4
+    assert len(errors) >= 5
+
+
+def test_validate_accepts_session_instead_of_time():
+    row = dict(_good_row(), startTime="", session="Morning")
+    assert validate_rows([row]) == []

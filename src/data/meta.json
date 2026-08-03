@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-03T09:40:53+00:00",
+  "generatedAt": "2026-08-03T13:45:15+00:00",
   "season": {
     "cambridge": "October/November 2026 Series",
     "oxfordaqa": "2026 May/June Series",
@@ -16,7 +16,9 @@
     },
     "pearson": {
       "page": "https://www.britishcouncil.cn/exams/school/pearson",
-      "pdf": "https://cn.live.solas.britishcouncil.digital/sites/default/files/b2c-pei_sheng_ai_de_si_kao_shi_bao_ming_zhi_nan_-on2026.pdf"
+      "pdf": "https://cn.live.solas.britishcouncil.digital/sites/default/files/b2c-pei_sheng_ai_de_si_kao_shi_bao_ming_zhi_nan_-on2026.pdf",
+      "igcseTimetable": "https://qualifications.pearson.com/content/dam/pdf/Support/Examination-timetables-for-Edexcel-International-GCSE/intgcse-nov-2026-final.xlsx",
+      "ialTimetable": "https://qualifications.pearson.com/content/dam/pdf/Support/Examination-timetables-for-International-Advanced-Levels/ial-october2026-final.xlsx"
     }
   }
 }

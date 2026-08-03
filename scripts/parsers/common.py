@@ -41,3 +41,17 @@ def parse_date(text: str, fmt: str) -> str:
 def clean_fee(text: str) -> float | None:
     """Strip thousands separators; return None for empty input."""
     return float(text.replace(",", "")) if text else None
+
+
+def level_group(board: str, level: str | None) -> str:
+    """Map a row to one of the two filter groups: IGCSE or A Level.
+
+    Pearson rows from the BC registration guide are International A Level
+    (level is None); Pearson IGCSE rows parsed from the official timetable
+    carry level "IG".
+    """
+    if board == "pearson":
+        return "IGCSE" if level == "IG" else "A Level"
+    if level == "IG":
+        return "IGCSE"
+    return "A Level"

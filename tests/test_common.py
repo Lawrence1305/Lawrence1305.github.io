@@ -1,7 +1,7 @@
 # tests/test_common.py
 import pytest
 
-from parsers.common import parse_date, parse_duration, parse_time
+from parsers.common import level_group, parse_date, parse_duration, parse_time
 
 
 def test_parse_duration():
@@ -24,3 +24,13 @@ def test_parse_time_pads_hour():
 def test_parse_date_iso():
     assert parse_date("08 October 2026", "%d %B %Y") == "2026-10-08"
     assert parse_date("6-May-2026", "%d-%b-%Y") == "2026-05-06"
+
+
+def test_level_group():
+    assert level_group("cambridge", "IG") == "IGCSE"
+    assert level_group("cambridge", "A") == "A Level"
+    assert level_group("cambridge", "AS") == "A Level"
+    assert level_group("oxfordaqa", "IG") == "IGCSE"
+    assert level_group("oxfordaqa", "A2") == "A Level"
+    assert level_group("pearson", None) == "A Level"
+    assert level_group("pearson", "IG") == "IGCSE"
