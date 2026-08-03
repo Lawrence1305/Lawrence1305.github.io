@@ -1,4 +1,5 @@
 import { exportToExcel } from "./excel";
+import { sessionLabel, subjectLabel, subjectZh } from "./labels";
 import type { Board, ExamRow, MetaData } from "./types";
 
 const BOARD_ORDER: Board[] = ["cambridge", "oxfordaqa", "pearson"];
@@ -7,12 +8,10 @@ const BOARD_NAMES: Record<Board, string> = {
   oxfordaqa: "牛津AQA",
   pearson: "培生爱德思",
 };
-const LEVELS = ["IG", "AS", "A2", "A"] as const;
+const LEVELS = ["IGCSE", "A Level"] as const;
 const LEVEL_NAMES: Record<string, string> = {
-  IG: "IG",
-  AS: "AS",
-  A2: "A2",
-  A: "完整A Level",
+  IGCSE: "IGCSE",
+  "A Level": "A Level",
 };
 
 interface AppState {
@@ -67,10 +66,10 @@ export function initExamsApp(): void {
     const q = state.search.trim().toLowerCase();
     return exams.filter((r) => {
       if (r.board !== state.board) return false;
-      if (state.level !== "ALL" && (r.level ?? "") !== state.level) return false;
+      if (state.level !== "ALL" && r.levelGroup !== state.level) return false;
       if (state.subject && r.subject !== state.subject) return false;
       if (q) {
-        const hay = `${r.subject} ${r.syllabusCode} ${r.componentCode} ${r.componentTitle}`.toLowerCase();
+        const hay = `${r.subject} ${subjectZh(r.subject)} ${r.syllabusCode} ${r.componentCode} ${r.componentTitle}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -118,7 +117,10 @@ export function initExamsApp(): void {
     subjectSelect.innerHTML =
       `<option value="">全部科目</option>` +
       subjects
-        .map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`)
+        .map(
+          (s) =>
+            `<option value="${escapeHtml(s)}">${escapeHtml(subjectLabel(s))}</option>`
+        )
         .join("");
   };
 
@@ -134,8 +136,8 @@ export function initExamsApp(): void {
         const checked = state.selected.has(rowId(r)) ? "checked" : "";
         return `<tr>
           <td class="whitespace-nowrap">${r.date}</td>
-          <td class="whitespace-nowrap">${r.startTime}</td>
-          <td>${escapeHtml(r.subject)}</td>
+          <td class="whitespace-nowrap">${r.startTime || sessionLabel(r.session)}</td>
+          <td>${escapeHtml(subjectLabel(r.subject))}</td>
           <td class="whitespace-nowrap">${escapeHtml(r.componentCode)}</td>
           <td>${escapeHtml(r.componentTitle)}</td>
           <td class="whitespace-nowrap">${r.duration}</td>
@@ -153,7 +155,7 @@ export function initExamsApp(): void {
       .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
       .map(
         (r) =>
-          `<li class="flex justify-between gap-2"><span>${escapeHtml(r.subject)} ${escapeHtml(r.componentCode)}</span><span class="text-base-content/50 whitespace-nowrap">${r.date} ${r.startTime}</span></li>`
+          `<li class="flex justify-between gap-2"><span>${escapeHtml(r.subject)} ${escapeHtml(r.componentCode)}</span><span class="text-base-content/50 whitespace-nowrap">${r.date} ${r.startTime || sessionLabel(r.session)}</span></li>`
       )
       .join("");
     exportBtn.disabled = state.selected.size === 0;

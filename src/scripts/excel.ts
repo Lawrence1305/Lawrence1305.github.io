@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { sessionLabel, subjectLabel } from "./labels";
 import type { Board, ExamRow, MetaData } from "./types";
 
 const BOARD_NAMES: Record<Board, string> = {
@@ -11,12 +12,12 @@ export function exportToExcel(rows: ExamRow[], meta: MetaData): void {
   const season = seasonLabel(meta);
   const data = rows.map((r) => ({
     考局: BOARD_NAMES[r.board],
-    等级: r.level ?? "",
-    科目: r.subject,
+    等级: r.levelGroup,
+    科目: subjectLabel(r.subject),
     试卷编码: r.componentCode,
     试卷名称: r.componentTitle,
     考试日期: r.date,
-    开考时间: r.startTime,
+    开考时间: r.startTime || sessionLabel(r.session),
     时长: r.duration,
   }));
   const ws = XLSX.utils.json_to_sheet(data);
