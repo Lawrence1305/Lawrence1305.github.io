@@ -155,7 +155,7 @@ export function initExamsApp(): void {
       .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
       .map(
         (r) =>
-          `<li class="flex justify-between gap-2"><span>${escapeHtml(r.subject)} ${escapeHtml(r.componentCode)}</span><span class="text-base-content/50 whitespace-nowrap">${r.date} ${r.startTime || sessionLabel(r.session)}</span></li>`
+          `<li class="badge badge-outline gap-1 whitespace-nowrap py-3">${escapeHtml(r.subject)} ${escapeHtml(r.componentCode)} · ${r.date} ${r.startTime || sessionLabel(r.session)}</li>`
       )
       .join("");
     exportBtn.disabled = state.selected.size === 0;

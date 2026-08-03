@@ -36,42 +36,47 @@ const jsonMeta = JSON.stringify(meta).replace(/</g, "\\u003c");
     <span id="result-count" class="text-sm text-base-content/60"></span>
   </div>
 
-  <div class="flex flex-col lg:flex-row gap-6 items-start">
-    <div class="flex-1 overflow-x-auto w-full">
+  <div class="rounded-box border border-base-300 overflow-x-auto">
+    <div class="max-h-[60vh] lg:max-h-[calc(100vh-360px)] overflow-y-auto">
       <table id="exam-table" class="table table-sm table-zebra w-full">
         <thead>
           <tr>
-            <th>日期</th>
-            <th>开考时间</th>
-            <th>科目</th>
-            <th>试卷编码</th>
-            <th>试卷名称</th>
-            <th>时长</th>
-            <th>勾选</th>
+            <th class="sticky top-0 z-10">日期</th>
+            <th class="sticky top-0 z-10">开考时间</th>
+            <th class="sticky top-0 z-10">科目</th>
+            <th class="sticky top-0 z-10">试卷编码</th>
+            <th class="sticky top-0 z-10">试卷名称</th>
+            <th class="sticky top-0 z-10">时长</th>
+            <th class="sticky top-0 z-10">勾选</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
     </div>
-
-    <aside class="lg:w-80 w-full shrink-0">
-      <div class="card bg-base-200 lg:sticky lg:top-20">
-        <div class="card-body p-4 gap-2">
-          <h3 class="font-bold">
-            我的考试(<span id="selected-count">0</span>)
-          </h3>
-          <ul
-            id="selected-list"
-            class="max-h-80 overflow-y-auto text-sm space-y-1 list-none pl-0"
-          ></ul>
-          <button id="export-excel" type="button" class="btn btn-primary btn-sm" disabled>
-            生成 Excel
-          </button>
-          <p class="text-xs text-base-content/50">按考试日期排序导出 .xlsx</p>
-        </div>
-      </div>
-    </aside>
   </div>
+
+  <div class="card bg-base-200 sticky bottom-0 z-20">
+    <div class="card-body p-4 gap-2">
+      <div class="flex flex-wrap items-center gap-3">
+        <h3 class="font-bold">
+          我的考试(<span id="selected-count">0</span>)
+        </h3>
+        <button id="clear-selection" type="button" class="btn btn-sm btn-ghost">
+          清空勾选
+        </button>
+        <div class="flex-1"></div>
+        <button id="export-excel" type="button" class="btn btn-primary btn-sm" disabled>
+          生成 Excel
+        </button>
+        <span class="text-xs text-base-content/50">按考试日期排序导出 .xlsx</span>
+      </div>
+      <ul
+        id="selected-list"
+        class="flex flex-wrap gap-2 max-h-28 overflow-y-auto text-sm list-none pl-0"
+      ></ul>
+    </div>
+  </div>
+</div>
 </div>
 
 <script>
