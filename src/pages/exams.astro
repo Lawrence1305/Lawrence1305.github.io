@@ -28,6 +28,13 @@ const updatedAt = meta.generatedAt
   <p class="mb-6 text-sm text-base-content/50">
     数据更新于 {updatedAt} · 共 {exams.length} 场考试
   </p>
+  {Object.entries(meta.stale ?? {})
+    .filter(([, isStale]) => isStale)
+    .map(([board]) => (
+      <p class="mb-1 text-sm text-warning">
+        ⚠️ {boardName[board]}数据更新失败(网络原因),当前显示上次同步结果。
+      </p>
+    ))}
   <ul class="mb-6 text-sm text-base-content/50 space-y-1 list-none pl-0">
     {Object.entries(meta.sources ?? {}).map(([board, src]) => (
       <li>

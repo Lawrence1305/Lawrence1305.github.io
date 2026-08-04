@@ -20,4 +20,5 @@ export interface MetaData {
   generatedAt: string;
   season: Partial<Record<Board, string>>;
   sources: Partial<Record<Board, { page: string; pdf: string }>>;
+  stale?: Partial<Record<Board, boolean>>;
 }

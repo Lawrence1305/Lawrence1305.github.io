@@ -219,8 +219,31 @@ def main() -> int:
         "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "season": {},
         "sources": {},
+        "stale": {},
     }
-    failed: list[str] = []
+    existing_by_board: dict[str, list[dict]] = {}
+    existing_meta: dict = {}
+    existing_path = DATA_DIR / "exams.json"
+    meta_path = DATA_DIR / "meta.json"
+    if existing_path.exists():
+        try:
+            for row in json.loads(existing_path.read_text(encoding="utf-8")):
+                existing_by_board.setdefault(row["board"], []).append(row)
+        except Exception as exc:  # noqa: BLE001 - corrupted cache is not fatal
+            print(
+                f"WARNING: could not read existing exams.json ({exc})",
+                file=sys.stderr,
+            )
+    if meta_path.exists():
+        try:
+            existing_meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception as exc:  # noqa: BLE001
+            print(
+                f"WARNING: could not read existing meta.json ({exc})",
+                file=sys.stderr,
+            )
+
+    no_data: list[str] = []
 
     for board, config in BOARDS.items():
         try:
@@ -267,13 +290,25 @@ def main() -> int:
                 raise RuntimeError("parsed 0 rows")
             all_rows.extend(rows)
             print(f"{board}: {len(rows)} rows ({season})")
-        except Exception as exc:  # noqa: BLE001 - keep old data on any failure
-            failed.append(f"{board}: {exc}")
-            print(f"ERROR {board}: {exc}", file=sys.stderr)
+        except Exception as exc:  # noqa: BLE001 - fall back to previous data
+            if board in existing_by_board:
+                all_rows.extend(existing_by_board[board])
+                meta["stale"][board] = True
+                meta["season"][board] = existing_meta.get("season", {}).get(board, "")
+                meta["sources"][board] = existing_meta.get("sources", {}).get(
+                    board, {"page": config["page_url"]}
+                )
+                print(
+                    f"WARNING {board}: {exc}; reusing previously synced data",
+                    file=sys.stderr,
+                )
+            else:
+                no_data.append(f"{board}: {exc}")
+                print(f"ERROR {board}: {exc}", file=sys.stderr)
 
-    if failed:
+    if no_data:
         print(
-            f"Sync failed for {len(failed)} board(s); keeping existing data.",
+            f"Sync failed for {len(no_data)} board(s) with no data at all.",
             file=sys.stderr,
         )
         return 1
@@ -290,7 +325,9 @@ def main() -> int:
         DATA_DIR / "meta.json",
         json.dumps(meta, ensure_ascii=False, indent=2) + "\n",
     )
-    print(f"Wrote {len(all_rows)} rows to {DATA_DIR / 'exams.json'}")
+    stale = [b for b, is_stale in meta["stale"].items() if is_stale]
+    suffix = f" (stale: {', '.join(stale)})" if stale else ""
+    print(f"Wrote {len(all_rows)} rows to {DATA_DIR / 'exams.json'}{suffix}")
     return 0
 
 
