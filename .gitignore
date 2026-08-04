@@ -26,11 +26,18 @@ pnpm-debug.log*
 # agent working data (brainstorm sessions, etc.)
 .superpowers/
 
+# local Claude settings (may contain signed/credentialed URLs)
+.claude/
+
 # pdf cache for the exam timetable sync
 .cache/
 
 # isolated worktrees
 .worktrees/
+
+# Scene Splitter runtime data
+projects/Scene_Splitter/backend/*.db
+projects/Scene_Splitter/backend/storage/
 
 # python caches
 __pycache__/
