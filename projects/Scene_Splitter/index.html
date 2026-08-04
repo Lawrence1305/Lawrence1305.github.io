@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scene Splitter - 视频分镜自动分割与AI打标签</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4a90d9;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --dark-color: #343a40;
+            --light-bg: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            color: white !important;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .upload-zone {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--primary-color);
+            background: #e8f4fd;
+        }
+
+        .upload-zone i {
+            font-size: 48px;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .video-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .video-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            background: #e9ecef;
+        }
+
+        .video-info {
+            padding: 15px;
+        }
+
+        .video-title {
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .status-badge {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 12px;
+        }
+
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-processing { background: #cce5ff; color: #004085; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-failed { background: #f8d7da; color: #721c24; }
+
+        .scene-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.2s ease;
+        }
+
+        .scene-card:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        .scene-thumbnail {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        .scene-info {
+            padding: 12px;
+        }
+
+        .scene-time {
+            font-size: 13px;
+            color: var(--secondary-color);
+        }
+
+        .tag {
+            display: inline-block;
+            background: #e8f4fd;
+            color: var(--primary-color);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+
+        .progress-container {
+            position: relative;
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar-custom {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: 25px;
+            padding: 8px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .search-box input {
+            border: none;
+            outline: none;
+            width: 100%;
+        }
+
+        .modal-body video {
+            width: 100%;
+            max-height: 70vh;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--secondary-color);
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-dark">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">
+                    <i class="fas fa-film me-2"></i>Scene Splitter
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" @click="currentView = 'upload'" :class="{active: currentView === 'upload'}">
+                                <i class="fas fa-cloud-upload-alt me-1"></i>上传视频
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" @click="currentView = 'videos'" :class="{active: currentView === 'videos'}">
+                                <i class="fas fa-video me-1"></i>视频列表
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" @click="currentView = 'search'" :class="{active: currentView === 'search'}">
+                                <i class="fas fa-search me-1"></i>搜索
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <div class="main-container">
+            <!-- Upload View -->
+            <div v-if="currentView === 'upload'">
+                <div class="row">
+                    <div class="col-lg-8 mx-auto">
+                        <div class="upload-zone"
+                             @drop.prevent="handleDrop"
+                             @dragover.prevent="dragover = true"
+                             @dragleave.prevent="dragover = false"
+                             :class="{dragover: dragover}"
+                             @click="$refs.fileInput.click()">
+                            <input type="file" ref="fileInput" @change="handleFileSelect" accept="video/*" style="display: none;">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <h4>拖拽或点击上传视频</h4>
+                            <p class="text-muted">支持 MP4, AVI, MOV, MKV 等格式</p>
+                            <p class="text-muted small">最大支持 2GB 视频文件</p>
+                        </div>
+
+                        <!-- Upload Progress -->
+                        <div v-if="uploadProgress > 0" class="mt-4">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>上传进度</span>
+                                <span>{{ uploadProgress.toFixed(1) }}%</span>
+                            </div>
+                            <div class="progress-container">
+                                <div class="progress-bar-custom" :style="{width: uploadProgress + '%'}"></div>
+                            </div>
+                        </div>
+
+                        <!-- Processing Status -->
+                        <div v-if="processingVideo" class="mt-4 p-4 bg-white rounded">
+                            <h5><i class="fas fa-cog fa-spin me-2"></i>正在处理视频</h5>
+                            <p class="text-muted">{{ processingMessage }}</p>
+                            <div class="progress-container">
+                                <div class="progress-bar-custom" :style="{width: processingProgress + '%'}"></div>
+                            </div>
+                            <small class="text-muted">{{ processingProgress.toFixed(1) }}%</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Videos List View -->
+            <div v-if="currentView === 'videos'">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4><i class="fas fa-video me-2"></i>视频列表</h4>
+                    <button class="btn btn-primary btn-sm" @click="loadVideos">
+                        <i class="fas fa-sync-alt me-1"></i>刷新
+                    </button>
+                </div>
+
+                <div v-if="loading" class="text-center py-5">
+                    <div class="spinner"></div>
+                    <p class="mt-3 text-muted">加载中...</p>
+                </div>
+
+                <div v-else-if="videos.length === 0" class="empty-state">
+                    <i class="fas fa-film"></i>
+                    <h5>暂无视频</h5>
+                    <p>上传第一个视频开始体验</p>
+                    <button class="btn btn-primary" @click="currentView = 'upload'">
+                        <i class="fas fa-plus me-1"></i>上传视频
+                    </button>
+                </div>
+
+                <div v-else class="row g-3">
+                    <div v-for="video in videos" :key="video.id" class="col-md-6 col-lg-4 col-xl-3">
+                        <div class="video-card">
+                            <div class="video-thumbnail d-flex align-items-center justify-content-center">
+                                <i class="fas fa-film fa-3x text-secondary"></i>
+                            </div>
+                            <div class="video-info">
+                                <div class="video-title" :title="video.original_filename">
+                                    {{ video.original_filename }}
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <span class="status-badge" :class="'status-' + video.status">
+                                        {{ getStatusText(video.status) }}
+                                    </span>
+                                    <small class="text-muted">{{ formatSize(video.file_size) }}</small>
+                                </div>
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-primary" @click="viewVideo(video)">
+                                        <i class="fas fa-eye me-1"></i>查看
+                                    </button>
+                                    <button v-if="video.status === 'pending'"
+                                            class="btn btn-sm btn-success"
+                                            @click="processVideo(video)">
+                                        <i class="fas fa-cut me-1"></i>处理
+                                    </button>
+                                    <button v-if="video.status === 'failed'"
+                                            class="btn btn-sm btn-warning"
+                                            @click="processVideo(video)">
+                                        <i class="fas fa-redo me-1"></i>重试
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" @click="deleteVideo(video)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Detail / Scenes View -->
+            <div v-if="currentView === 'detail'">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <button class="btn btn-outline-secondary btn-sm me-2" @click="currentView = 'videos'">
+                            <i class="fas fa-arrow-left me-1"></i>返回
+                        </button>
+                        <h4 class="d-inline">{{ selectedVideo.original_filename }}</h4>
+                    </div>
+                    <div>
+                        <button v-if="selectedVideo.status === 'completed'"
+                                class="btn btn-primary btn-sm"
+                                @click="currentView = 'search'">
+                            <i class="fas fa-search me-1"></i>搜索分镜
+                        </button>
+                    </div>
+                </div>
+
+                <div v-if="scenesLoading" class="text-center py-5">
+                    <div class="spinner"></div>
+                    <p class="mt-3 text-muted">加载分镜中...</p>
+                </div>
+
+                <div v-else-if="scenes.length === 0" class="empty-state">
+                    <i class="fas fa-scissors"></i>
+                    <h5>暂无分镜</h5>
+                    <p v-if="selectedVideo.status === 'completed'">该视频没有检测到分镜</p>
+                        <button v-else class="btn btn-success" @click="processVideo(selectedVideo)">
+                            <i class="fas fa-cut me-1"></i>开始处理
+                        </button>
+                </div>
+
+                <div v-else class="row g-3">
+                    <div v-for="scene in scenes" :key="scene.id" class="col-md-6 col-lg-4">
+                        <div class="scene-card">
+                            <img :src="`/api/scenes/${scene.id}/keyframe?t=${Date.now()}`"
+                                 class="scene-thumbnail"
+                                 @click="playScene(scene)"
+                                 @error="handleImageError($event)">
+                            <div class="scene-info">
+                                <div class="d-flex justify-content-between">
+                                    <span class="scene-time">
+                                        <i class="fas fa-clock me-1"></i>
+                                        {{ formatTime(scene.start_time) }} - {{ formatTime(scene.end_time) }}
+                                    </span>
+                                    <span class="badge bg-secondary">{{ scene.duration.toFixed(1) }}s</span>
+                                </div>
+                                <p class="mt-2 mb-1" v-if="scene.description">
+                                    {{ scene.description }}
+                                </p>
+                                <div v-if="scene.tags" class="mt-2">
+                                    <span v-for="tag in JSON.parse(scene.tags)" :key="tag" class="tag">
+                                        {{ tag }}
+                                    </span>
+                                </div>
+                                <div v-if="!scene.is_processed" class="mt-2">
+                                    <button class="btn btn-sm btn-outline-primary" @click="analyzeScene(scene)">
+                                        <i class="fas fa-robot me-1"></i>AI分析
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search View -->
+            <div v-if="currentView === 'search'">
+                <div class="row mb-4">
+                    <div class="col-lg-6 mx-auto">
+                        <div class="search-box d-flex align-items-center">
+                            <i class="fas fa-search text-muted me-2"></i>
+                            <input type="text"
+                                   v-model="searchQuery"
+                                   @input="searchScenes"
+                                   placeholder="搜索分镜标签或描述..."
+                                   class="py-2">
+                            <button v-if="searchQuery" class="btn btn-sm" @click="searchQuery = ''; searchScenes()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <span v-for="tag in allTags" :key="tag"
+                          class="tag"
+                          style="cursor: pointer;"
+                          @click="searchQuery = tag; searchScenes()">
+                        {{ tag }}
+                    </span>
+                </div>
+
+                <div v-if="searchLoading" class="text-center py-5">
+                    <div class="spinner"></div>
+                </div>
+
+                <div v-else-if="searchResults.length === 0 && searchQuery" class="empty-state">
+                    <i class="fas fa-search"></i>
+                    <h5>未找到相关分镜</h5>
+                    <p>尝试其他关键词</p>
+                </div>
+
+                <div v-else class="row g-3">
+                    <div v-for="scene in searchResults" :key="scene.id" class="col-md-6 col-lg-4">
+                        <div class="scene-card">
+                            <img :src="`/api/scenes/${scene.id}/keyframe?t=${Date.now()}`"
+                                 class="scene-thumbnail"
+                                 @click="playScene(scene)"
+                                 @error="handleImageError($event)">
+                            <div class="scene-info">
+                                <div class="d-flex justify-content-between">
+                                    <span class="scene-time">
+                                        <i class="fas fa-clock me-1"></i>
+                                        {{ formatTime(scene.start_time) }}
+                                    </span>
+                                    <span class="badge bg-secondary">{{ scene.duration.toFixed(1) }}s</span>
+                                </div>
+                                <p class="mt-2 mb-1" v-if="scene.description">
+                                    {{ scene.description }}
+                                </p>
+                                <div v-if="scene.tags" class="mt-2">
+                                    <span v-for="tag in JSON.parse(scene.tags)" :key="tag" class="tag">
+                                        {{ tag }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Player Modal -->
+        <div class="modal fade" id="videoModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">分镜预览</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-0">
+                        <video ref="sceneVideoPlayer" controls style="width: 100%; max-height: 70vh;">
+                            <source :src="sceneVideoUrl" type="video/mp4">
+                            您的浏览器不支持视频播放
+                        </video>
+                    </div>
+                    <div class="modal-footer">
+                        <span class="text-muted">
+                            {{ currentScene ? formatTime(currentScene.start_time) + ' - ' + formatTime(currentScene.end_time) : '' }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div v-if="globalLoading" class="loading-overlay">
+            <div class="text-center">
+                <div class="spinner"></div>
+                <p class="mt-3 text-white">{{ loadingMessage }}</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        const API_BASE = 'http://localhost:8000/api';
+
+        const app = createApp({
+            setup() {
+                // State
+                const currentView = ref('upload');
+                const videos = ref([]);
+                const scenes = ref([]);
+                const searchResults = ref([]);
+                const allTags = ref([]);
+                const selectedVideo = ref(null);
+                const currentScene = ref(null);
+                const sceneVideoUrl = ref('');
+
+                // Loading states
+                const loading = ref(false);
+                const scenesLoading = ref(false);
+                const searchLoading = ref(false);
+                const globalLoading = ref(false);
+                const loadingMessage = ref('');
+
+                // Upload state
+                const uploadProgress = ref(0);
+                const dragover = ref(false);
+                const processingVideo = ref(false);
+                const processingProgress = ref(0);
+                const processingMessage = ref('');
+
+                // Search
+                const searchQuery = ref('');
+
+                // Video player modal
+                let videoModal = null;
+
+                // Methods
+                const loadVideos = async () => {
+                    loading.value = true;
+                    try {
+                        const res = await axios.get(`${API_BASE}/videos`);
+                        videos.value = res.data;
+                    } catch (e) {
+                        console.error('Failed to load videos:', e);
+                        alert('加载视频列表失败');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const handleFileSelect = async (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        await uploadVideo(file);
+                    }
+                };
+
+                const handleDrop = async (event) => {
+                    dragover.value = false;
+                    const file = event.dataTransfer.files[0];
+                    if (file && file.type.startsWith('video/')) {
+                        await uploadVideo(file);
+                    }
+                };
+
+                const uploadVideo = async (file) => {
+                    const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB
+                    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+                    const filename = file.name;
+
+                    uploadProgress.value = 0;
+
+                    for (let i = 0; i < totalChunks; i++) {
+                        const start = i * CHUNK_SIZE;
+                        const end = Math.min(start + CHUNK_SIZE, file.size);
+                        const chunk = file.slice(start, end);
+
+                        const formData = new FormData();
+                        formData.append('filename', filename);
+                        formData.append('chunk_index', i);
+                        formData.append('total_chunks', totalChunks);
+                        formData.append('chunk', chunk);
+
+                        try {
+                            await axios.post(`${API_BASE}/videos/upload/chunk`, formData);
+                            uploadProgress.value = ((i + 1) / totalChunks) * 100;
+                        } catch (e) {
+                            console.error('Upload failed:', e);
+                            alert('上传失败');
+                            return;
+                        }
+                    }
+
+                    // Reload videos
+                    await loadVideos();
+                    uploadProgress.value = 0;
+
+                    // Find the uploaded video and start processing
+                    const uploadedVideo = videos.value.find(v => v.original_filename === filename);
+                    if (uploadedVideo) {
+                        viewVideo(uploadedVideo);
+                    }
+                };
+
+                const viewVideo = async (video) => {
+                    selectedVideo.value = video;
+                    currentView.value = 'detail';
+                    await loadScenes(video.id);
+                };
+
+                const loadScenes = async (videoId) => {
+                    scenesLoading.value = true;
+                    try {
+                        const res = await axios.get(`${API_BASE}/videos/${videoId}/scenes`);
+                        scenes.value = res.data;
+                    } catch (e) {
+                        console.error('Failed to load scenes:', e);
+                    } finally {
+                        scenesLoading.value = false;
+                    }
+                };
+
+                const processVideo = async (video) => {
+                    if (!confirm('确定要开始处理这个视频吗？\n这将检测分镜并使用AI进行分析。')) {
+                        return;
+                    }
+
+                    globalLoading.value = true;
+                    loadingMessage.value = '正在启动处理任务...';
+
+                    try {
+                        // Start processing
+                        const res = await axios.post(`${API_BASE}/videos/${video.id}/process`);
+                        const taskId = res.data.task_id;
+
+                        // Poll for status
+                        await pollTaskStatus(taskId);
+
+                        // Reload video and scenes
+                        await loadVideos();
+                        selectedVideo.value = videos.value.find(v => v.id === video.id);
+                        await loadScenes(video.id);
+
+                        // Load all tags
+                        await loadAllTags();
+                    } catch (e) {
+                        console.error('Processing failed:', e);
+                        alert('处理失败');
+                    } finally {
+                        globalLoading.value = false;
+                        processingVideo.value = false;
+                    }
+                };
+
+                const pollTaskStatus = async (taskId) => {
+                    processingVideo.value = true;
+
+                    while (true) {
+                        try {
+                            const res = await axios.get(`${API_BASE}/tasks/${taskId}`);
+                            const task = res.data;
+
+                            processingProgress.value = task.progress;
+                            processingMessage.value = task.message || '处理中...';
+
+                            if (task.status === 'completed') {
+                                break;
+                            } else if (task.status === 'failed') {
+                                throw new Error(task.message || '任务失败');
+                            }
+
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                        } catch (e) {
+                            console.error('Poll error:', e);
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                        }
+                    }
+                };
+
+                const deleteVideo = async (video) => {
+                    if (!confirm('确定要删除这个视频吗？\n这将删除所有相关分镜和文件。')) {
+                        return;
+                    }
+
+                    try {
+                        await axios.delete(`${API_BASE}/videos/${video.id}`);
+                        await loadVideos();
+                    } catch (e) {
+                        console.error('Delete failed:', e);
+                        alert('删除失败');
+                    }
+                };
+
+                const analyzeScene = async (scene) => {
+                    try {
+                        await axios.post(`${API_BASE}/scenes/${scene.id}/analyze`);
+                        alert('AI分析已启动，请稍后刷新');
+                    } catch (e) {
+                        console.error('Analysis failed:', e);
+                        alert('分析失败');
+                    }
+                };
+
+                const playScene = (scene) => {
+                    currentScene.value = scene;
+                    sceneVideoUrl.value = `${API_BASE}/scenes/${scene.id}/video`;
+
+                    if (!videoModal) {
+                        videoModal = new bootstrap.Modal(document.getElementById('videoModal'));
+                    }
+                    videoModal.show();
+                };
+
+                const searchScenes = async () => {
+                    if (!searchQuery.value.trim()) {
+                        searchResults.value = [];
+                        return;
+                    }
+
+                    searchLoading.value = true;
+                    try {
+                        const res = await axios.get(`${API_BASE}/search/scenes`, {
+                            params: { q: searchQuery.value }
+                        });
+                        searchResults.value = res.data;
+                    } catch (e) {
+                        console.error('Search failed:', e);
+                    } finally {
+                        searchLoading.value = false;
+                    }
+                };
+
+                const loadAllTags = async () => {
+                    try {
+                        const res = await axios.get(`${API_BASE}/search/tags`);
+                        allTags.value = res.data;
+                    } catch (e) {
+                        console.error('Failed to load tags:', e);
+                    }
+                };
+
+                // Utilities
+                const getStatusText = (status) => {
+                    const map = {
+                        'pending': '待处理',
+                        'processing': '处理中',
+                        'completed': '已完成',
+                        'failed': '失败'
+                    };
+                    return map[status] || status;
+                };
+
+                const formatSize = (bytes) => {
+                    if (bytes < 1024) return bytes + ' B';
+                    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+                    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+                };
+
+                const formatTime = (seconds) => {
+                    const mins = Math.floor(seconds / 60);
+                    const secs = Math.floor(seconds % 60);
+                    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                };
+
+                const handleImageError = (event) => {
+                    event.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150"><rect fill="%23e9ecef" width="200" height="150"/><text fill="%20adb5bd" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle">无缩略图</text></svg>';
+                };
+
+                // Init
+                onMounted(() => {
+                    loadVideos();
+                    loadAllTags();
+                });
+
+                return {
+                    // State
+                    currentView,
+                    videos,
+                    scenes,
+                    searchResults,
+                    allTags,
+                    selectedVideo,
+                    currentScene,
+                    sceneVideoUrl,
+                    loading,
+                    scenesLoading,
+                    searchLoading,
+                    globalLoading,
+                    loadingMessage,
+                    uploadProgress,
+                    dragover,
+                    processingVideo,
+                    processingProgress,
+                    processingMessage,
+                    searchQuery,
+
+                    // Methods
+                    loadVideos,
+                    handleFileSelect,
+                    handleDrop,
+                    viewVideo,
+                    processVideo,
+                    deleteVideo,
+                    analyzeScene,
+                    playScene,
+                    searchScenes,
+                    loadAllTags,
+
+                    // Utils
+                    getStatusText,
+                    formatSize,
+                    formatTime,
+                    handleImageError
+                };
+            }
+        });
+
+        app.mount('#app');
+    </script>
+</body>
+</html>
