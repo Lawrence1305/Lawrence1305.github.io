@@ -13,7 +13,6 @@
             <p>自动识别并分割长图中的多个页面</p>
         </header>
 
-        <!-- 文件上传区域 -->
         <div class="upload-section">
             <div class="drop-zone" id="dropZone">
                 <div class="upload-icon">📁</div>
@@ -21,7 +20,7 @@
                 <p class="hint">支持 PNG, JPG, JPEG 格式</p>
                 <input type="file" id="fileInput" accept="image/*" style="display: none;">
             </div>
-            
+
             <div class="file-info" id="fileInfo" style="display: none;">
                 <p><strong>文件名:</strong> <span id="fileName"></span></p>
                 <p><strong>大小:</strong> <span id="fileSize"></span></p>
@@ -29,21 +28,25 @@
             </div>
         </div>
 
-        <!-- 处理选项 -->
         <div class="options-section" id="optionsSection" style="display: none;">
             <h3>检测设置</h3>
-            
+
             <div class="option-group">
                 <label>
                     检测模式:
                     <select id="detectionMode">
-                        <option value="gray">灰色分隔线检测(推荐)</option>
-                        <option value="auto">自动检测</option>
-                        <option value="gradient">梯度检测</option>
+                        <option value="grayV2">灰色分隔线检测 V2 (推荐)</option>
+                        <option value="gray">灰色分隔线检测 V1</option>
+                        <option value="auto">自动亮度检测</option>
+                        <option value="gradient">梯度变化检测</option>
+                        <option value="edge">边缘检测</option>
+                        <option value="projection">投影检测</option>
+                        <option value="color">颜色变化检测</option>
+                        <option value="hybrid">混合检测(推荐)</option>
                     </select>
                 </label>
             </div>
-            
+
             <div class="option-group" id="expectedPagesGroup">
                 <label>
                     期望页数 (0=自动):
@@ -51,29 +54,28 @@
                     <span class="hint">💡 提示: 输入期望的页数可以提高准确率</span>
                 </label>
             </div>
-            
+
             <div class="option-group">
                 <label>
                     检测灵敏度:
-                    <input type="range" id="sensitivity" min="1" max="10" value="5">
-                    <span id="sensitivityValue">5</span>
+                    <input type="range" id="sensitivity" min="0" max="100" value="50">
+                    <span id="sensitivityValue">50</span>
                 </label>
             </div>
-            
+
             <div class="option-group">
                 <label>
                     <input type="checkbox" id="showDebug">
                     显示调试信息
                 </label>
             </div>
-            
+
             <div class="button-group">
                 <button class="btn btn-secondary" id="analyzeBtn">📊 分析图片</button>
                 <button class="btn btn-primary" id="processBtn">开始处理</button>
             </div>
         </div>
 
-        <!-- 进度条 -->
         <div class="progress-section" id="progressSection" style="display: none;">
             <div class="progress-bar">
                 <div class="progress-fill" id="progressBar"></div>
@@ -81,13 +83,11 @@
             <p class="progress-text" id="progressText">准备中...</p>
         </div>
 
-        <!-- 调试面板 -->
         <div class="debug-panel" id="debugPanel" style="display: none;">
             <h3>调试信息</h3>
             <div class="debug-log" id="debugLog"></div>
         </div>
 
-        <!-- 预览区域 -->
         <div class="preview-section" id="previewSection" style="display: none;">
             <h3>预览结果 (<span id="pageCount">0</span> 个页面)</h3>
             <div class="preview-grid" id="previewGrid"></div>
@@ -96,15 +96,8 @@
                     <span class="label-icon">📝</span>
                     导出文件名:
                 </label>
-                <input 
-                    type="text" 
-                    id="exportFilename" 
-                    class="filename-input"
-                    placeholder="留空则在导出时询问"
-                >
-                <small class="filename-hint">
-                    💡 提示: PDF导出会自动添加.pdf后缀；图片导出会自动添加页码和.png后缀
-                </small>
+                <input type="text" id="exportFilename" class="filename-input" placeholder="留空则在导出时询问">
+                <small class="filename-hint">💡 提示: PDF导出会自动添加.pdf后缀；图片导出会自动添加页码和.png后缀</small>
             </div>
             <div class="export-section">
                 <button class="btn btn-success" id="exportPdfBtn">📥 导出为PDF</button>
@@ -112,23 +105,16 @@
             </div>
         </div>
     </div>
-    <!-- 浮动按钮 -->
-    <div class="float-buttons" id="floatButtons">
-        <button class="float-btn to-top" id="toTopBtn" title="返回顶部">
-            <span class="icon">↑</span>
-        </button>
-        <button class="float-btn to-options" id="toOptionsBtn" title="跳转到操作区">
-            <span class="icon">⚙️</span>
-        </button>
-        <button class="float-btn to-bottom" id="toBottomBtn" title="跳转到底部">
-            <span class="icon">↓</span>
-        </button>
-    </div>
-    <!-- 引入库 -->
-    <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
 
-    <!-- 应用脚本 -->
+    <div class="float-buttons" id="floatButtons">
+        <button class="float-btn to-top" id="toTopBtn" title="返回顶部"><span class="icon">↑</span></button>
+        <button class="float-btn to-options" id="toOptionsBtn" title="跳转到操作区"><span class="icon">⚙️</span></button>
+        <button class="float-btn to-bottom" id="toBottomBtn" title="跳转到底部"><span class="icon">↓</span></button>
+    </div>
+
+    <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
     <script src="js/graySeparatorDetector.js"></script>
+    <script src="js/graySeparatorDetectorV2.js"></script>
     <script src="js/imageAnalyzer.js"></script>
     <script src="js/imageProcessor.js"></script>
     <script src="js/pdfGenerator.js"></script>
