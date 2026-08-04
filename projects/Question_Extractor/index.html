@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>试卷题目提取器</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --secondary: #64748b;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --success: #22c55e;
+            --error: #ef4444;
+            --border: #e2e8f0;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-hover: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        header {
+            text-align: center;
+            padding: 32px 0;
+            background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+            color: white;
+            margin-bottom: 24px;
+            border-radius: 0 0 16px 16px;
+        }
+
+        header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            transition: box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-hover);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title .icon {
+            width: 20px;
+            height: 20px;
+            color: var(--primary);
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 48px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #fafbfc;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .upload-area .upload-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 16px;
+            color: var(--primary);
+        }
+
+        .upload-area h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .upload-area p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .upload-area input {
+            display: none;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+
+        .file-info .details {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .file-info .pdf-icon {
+            width: 40px;
+            height: 40px;
+            color: var(--error);
+        }
+
+        .file-info .name {
+            font-weight: 600;
+        }
+
+        .file-info .size {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .file-info .remove-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+        }
+
+        .file-info .remove-btn:hover {
+            background: #fee2e2;
+            color: var(--error);
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .preview-item {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .preview-item:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+        }
+
+        .preview-item canvas {
+            width: 100%;
+            display: block;
+        }
+
+        .preview-item .page-num {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .settings-row label {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #f1f5f9;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: #16a34a;
+        }
+
+        .progress-container {
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), #7c3aed);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            margin-top: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .results-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .result-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-item .num {
+            background: var(--primary);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .result-item .info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .result-item .title {
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .result-item .meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .result-item .thumb {
+            width: 60px;
+            height: 40px;
+            object-fit: contain;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .folder-path {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        .folder-path strong {
+            color: var(--text-primary);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 4px;
+            line-height: 1;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-body canvas, .modal-body img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #e2e8f0;
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 2000;
+        }
+
+        .toast {
+            background: var(--text-primary);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease;
+            font-size: 14px;
+        }
+
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--error); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        footer {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .hidden { display: none !important; }
+
+        .detection-info {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .detection-info strong {
+            color: #0369a1;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>试卷题目提取器</h1>
+        <p>上传 PDF 试卷，自动提取每道题目为图片</p>
+    </header>
+
+    <div class="container">
+        <div class="card" id="upload-section">
+            <div class="card-title">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                上传 PDF 文件
+            </div>
+            <div class="upload-area" id="upload-area">
+                <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/>
+                    <line x1="9" y1="15" x2="12" y2="12"/>
+                    <line x1="15" y1="15" x2="12" y2="12"/>
+                </svg>
+                <h3>点击或拖拽上传 PDF</h3>
+                <p>支持 PDF 文件，最大 50MB</p>
+                <input type="file" id="file-input" accept=".pdf">
+            </div>
+            <div class="file-info hidden" id="file-info">
+                <div class="details">
+                    <svg class="pdf-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                        <path d="M14 2v6h6" fill="none" stroke="white" stroke-width="1"/>
+                    </svg>
+                    <div>
+                        <div class="name" id="file-name">document.pdf</div>
+                        <div class="size" id="file-size">0 KB · <span id="page-count">0</span> 页</div>
+                    </div>
+                </div>
+                <button class="remove-btn" id="remove-file" title="移除文件">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="card hidden" id="preview-section">
+            <div class="card-title">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                PDF 预览
+            </div>
+            <div class="preview-grid" id="preview-grid"></div>
+        </div>
+
+        <div class="card hidden" id="settings-section">
+            <div class="card-title">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                提取设置
+            </div>
+            <div class="detection-info" id="detection-info">
+                <strong>智能检测：</strong>自动识别多级题号 (1.→a.→i.)，合并跨页题目，去除空白区域
+            </div>
+            <div class="settings-row">
+                <button class="btn btn-primary" id="extract-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="16 3 21 3 21 8"/>
+                        <line x1="4" y1="20" x2="21" y2="3"/>
+                        <polyline points="21 16 21 21 16 21"/>
+                        <line x1="15" y1="15" x2="21" y2="21"/>
+                        <line x1="4" y1="4" x2="9" y2="9"/>
+                    </svg>
+                    开始提取题目
+                </button>
+            </div>
+        </div>
+
+        <div class="card hidden" id="progress-section">
+            <div class="card-title">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="20" x2="12" y2="10"/>
+                    <line x1="18" y1="20" x2="18" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="16"/>
+                </svg>
+                提取进度
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="fill" id="progress-fill"></div>
+                </div>
+                <div class="progress-text" id="progress-text">正在提取...</div>
+            </div>
+            <div class="results-list" id="results-list"></div>
+        </div>
+
+        <div class="card hidden" id="save-section">
+            <div class="card-title">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+                保存图片
+            </div>
+            <div class="actions">
+                <button class="btn btn-secondary" id="select-folder-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    选择保存文件夹
+                </button>
+                <button class="btn btn-success" id="save-btn" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    开始保存
+                </button>
+                <button class="btn btn-secondary" id="download-btn" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    批量下载
+                </button>
+            </div>
+            <div class="folder-path hidden" id="folder-path">
+                已选择文件夹：<strong id="folder-name"></strong>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        试卷题目提取器 &copy; 2026
+    </footer>
+
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">预览</h3>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const state = {
+            pdfFile: null,
+            pdfDoc: null,
+            pdfName: '',
+            pageCount: 0,
+            pageCanvases: [],
+            questions: [],
+            selectedFolder: null,
+            extractedImages: [],
+            isProcessing: false
+        };
+
+        const elements = {
+            uploadArea: document.getElementById('upload-area'),
+            fileInput: document.getElementById('file-input'),
+            fileInfo: document.getElementById('file-info'),
+            fileName: document.getElementById('file-name'),
+            fileSize: document.getElementById('file-size'),
+            pageCount: document.getElementById('page-count'),
+            removeFile: document.getElementById('remove-file'),
+            previewSection: document.getElementById('preview-section'),
+            previewGrid: document.getElementById('preview-grid'),
+            settingsSection: document.getElementById('settings-section'),
+            detectionInfo: document.getElementById('detection-info'),
+            extractBtn: document.getElementById('extract-btn'),
+            progressSection: document.getElementById('progress-section'),
+            progressFill: document.getElementById('progress-fill'),
+            progressText: document.getElementById('progress-text'),
+            resultsList: document.getElementById('results-list'),
+            saveSection: document.getElementById('save-section'),
+            selectFolderBtn: document.getElementById('select-folder-btn'),
+            saveBtn: document.getElementById('save-btn'),
+            downloadBtn: document.getElementById('download-btn'),
+            folderPath: document.getElementById('folder-path'),
+            folderName: document.getElementById('folder-name'),
+            modalOverlay: document.getElementById('modal-overlay'),
+            modalTitle: document.getElementById('modal-title'),
+            modalBody: document.getElementById('modal-body'),
+            modalClose: document.getElementById('modal-close'),
+            toastContainer: document.getElementById('toast-container')
+        };
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            elements.toastContainer.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function showModal(title, content) {
+            elements.modalTitle.textContent = title;
+            elements.modalBody.innerHTML = '';
+            if (typeof content === 'string') {
+                elements.modalBody.innerHTML = content;
+            } else if (content instanceof HTMLCanvasElement) {
+                const img = document.createElement('img');
+                img.src = content.toDataURL('image/png');
+                elements.modalBody.appendChild(img);
+            } else if (content instanceof HTMLImageElement) {
+                elements.modalBody.appendChild(content);
+            }
+            elements.modalOverlay.classList.add('active');
+        }
+
+        function hideModal() {
+            elements.modalOverlay.classList.remove('active');
+        }
+
+        function setProgress(percent, text) {
+            elements.progressFill.style.width = `${percent}%`;
+            elements.progressText.textContent = text;
+        }
+
+        async function handleFileUpload(file) {
+            if (!file || file.type !== 'application/pdf') {
+                showToast('请上传 PDF 文件', 'error');
+                return;
+            }
+
+            if (file.size > 50 * 1024 * 1024) {
+                showToast('文件大小不能超过 50MB', 'error');
+                return;
+            }
+
+            state.pdfFile = file;
+            state.pdfName = file.name.replace('.pdf', '');
+            state.pageCanvases = [];
+            state.questions = [];
+            state.extractedImages = [];
+
+            elements.fileName.textContent = file.name;
+            elements.fileSize.innerHTML = formatFileSize(file.size);
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                state.pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                state.pageCount = state.pdfDoc.numPages;
+                elements.pageCount.textContent = state.pageCount;
+
+                elements.fileInfo.classList.remove('hidden');
+                elements.previewSection.classList.remove('hidden');
+                elements.settingsSection.classList.remove('hidden');
+
+                await renderPreviews();
+                showToast('PDF 加载成功', 'success');
+            } catch (error) {
+                console.error('PDF 加载失败:', error);
+                showToast('PDF 加载失败', 'error');
+            }
+        }
+
+        async function renderPreviews() {
+            elements.previewGrid.innerHTML = '';
+            state.pageCanvases = [];
+
+            const viewportScale = 150 / 612;
+
+            for (let i = 1; i <= state.pageCount; i++) {
+                const page = await state.pdfDoc.getPage(i);
+                const viewport = page.getViewport({ scale: viewportScale });
+
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                const ctx = canvas.getContext('2d');
+                await page.render({ canvasContext: ctx, viewport }).promise;
+
+                state.pageCanvases.push(canvas);
+
+                const previewItem = document.createElement('div');
+                previewItem.className = 'preview-item';
+                const thumbCanvas = canvas.cloneNode(true);
+                thumbCanvas.getContext('2d').drawImage(canvas, 0, 0);
+                previewItem.appendChild(thumbCanvas);
+
+                const pageNum = document.createElement('div');
+                pageNum.className = 'page-num';
+                pageNum.textContent = `第 ${i} 页`;
+                previewItem.appendChild(pageNum);
+
+                previewItem.addEventListener('click', () => {
+                    const fullCanvas = document.createElement('canvas');
+                    const fullPage = state.pageCanvases[i - 1];
+                    fullCanvas.width = fullPage.width;
+                    fullCanvas.height = fullPage.height;
+                    fullCanvas.getContext('2d').drawImage(fullPage, 0, 0);
+                    showModal(`第 ${i} 页 - ${state.pdfName}.pdf`, fullCanvas);
+                });
+
+                elements.previewGrid.appendChild(previewItem);
+            }
+        }
+
+        // Detect questions with precise Y position tracking
+        async function detectQuestions() {
+            state.questions = [];
+
+            // Main question patterns - numbers at left margin
+            const mainQuestionPatterns = [
+                /^(?:(\d+)[.)]\s*)/,
+                /^(?:(\d+)、\s*)/,
+            ];
+
+            // Analyze all pages and track question Y positions
+            const allPageData = [];
+            const pdfHeight = 842; // Assume A4 size at 72dpi as reference
+
+            for (let pageNum = 1; pageNum <= state.pageCount; pageNum++) {
+                const page = await state.pdfDoc.getPage(pageNum);
+                const textContent = await page.getTextContent();
+                const viewport = page.getViewport({ scale: 1 });
+                const pageHeight = viewport.height;
+
+                // Get all text items with positions
+                const textItems = textContent.items
+                    .filter(item => item.str.trim().length > 0)
+                    .map(item => ({
+                        str: item.str,
+                        y: item.transform[5],
+                        x: item.transform[4],
+                        width: item.width || 50,
+                        height: item.height || 12
+                    }));
+
+                if (textItems.length === 0) continue;
+
+                // Group text by lines
+                const lines = [];
+                let currentLine = { x: Infinity, texts: [], y: 0, items: [] };
+                let lastY = null;
+
+                for (const item of textItems) {
+                    if (lastY === null || Math.abs(item.y - lastY) < 3) {
+                        currentLine.x = Math.min(currentLine.x, item.x);
+                        currentLine.texts.push(item.str);
+                        currentLine.items.push(item);
+                        currentLine.y = item.y;
+                    } else {
+                        if (currentLine.texts.length > 0) {
+                            lines.push({...currentLine});
+                        }
+                        currentLine = { x: item.x, texts: [item.str], items: [item], y: item.y };
+                    }
+                    lastY = item.y;
+                }
+                if (currentLine.texts.length > 0) {
+                    lines.push({...currentLine});
+                }
+
+                // Sort lines top to bottom (PDF Y is inverted - higher Y = top)
+                lines.sort((a, b) => b.y - a.y);
+
+                // Calculate header/footer zones (top and bottom 8% of page)
+                const headerThreshold = pageHeight * 0.08;
+                const footerThreshold = pageHeight * 0.92;
+
+                // Find main question starts and their Y ranges
+                const pageQuestionMarkers = [];
+                for (let i = 0; i < lines.length; i++) {
+                    const fullText = lines[i].texts.join(' ').trim();
+
+                    // Skip if line is in header or footer zone (likely page numbers)
+                    const lineY = lines[i].y;
+                    if (lineY > pageHeight - headerThreshold || lineY < footerThreshold) {
+                        // But allow if it has significant content after the number
+                        const hasQuestionContent = fullText.length > 10 &&
+                            !/^\d+$/.test(fullText.replace(/^[.)]\s*/, '').trim());
+                        if (!hasQuestionContent) continue;
+                    }
+
+                    for (const pattern of mainQuestionPatterns) {
+                        const match = fullText.match(pattern);
+                        if (match && lines[i].x < 100) {
+                            const num = parseInt(match[1]);
+                            // Filter out page numbers (typically single digits, standalone)
+                            // Real questions usually have content after the number
+                            const afterNumber = fullText.substring(match[0].length).trim();
+
+                            // Accept if: number > 0 AND (has content after OR is not in header/footer)
+                            const isInHeader = lineY > pageHeight - headerThreshold;
+                            const isInFooter = lineY < footerThreshold;
+
+                            if (num > 0 && (afterNumber.length > 0 || (!isInHeader && !isInFooter))) {
+                                pageQuestionMarkers.push({
+                                    lineIndex: i,
+                                    number: num,
+                                    y: lines[i].y,
+                                    hasContent: afterNumber.length > 0
+                                });
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                // Store full page data
+                allPageData.push({
+                    pageNum,
+                    lines,
+                    viewport,
+                    questionMarkers: pageQuestionMarkers
+                });
+            }
+
+            // Build questions by tracking Y ranges across pages
+            const questions = [];
+            let currentQuestion = null;
+
+            for (let i = 0; i < allPageData.length; i++) {
+                const pageData = allPageData[i];
+                const markers = pageData.questionMarkers;
+
+                if (markers.length > 0) {
+                    // New questions start on this page
+                    for (const marker of markers) {
+                        if (currentQuestion) {
+                            questions.push(currentQuestion);
+                        }
+                        currentQuestion = {
+                            id: marker.number,
+                            name: `第 ${marker.number} 题`,
+                            yRanges: [{
+                                pageNum: pageData.pageNum,
+                                startY: marker.y,
+                                endY: null, // Will be set when next question/page found
+                                lines: pageData.lines,
+                                viewport: pageData.viewport
+                            }]
+                        };
+                    }
+                }
+
+                if (currentQuestion) {
+                    // Check if this page continues the current question
+                    if (markers.length === 0) {
+                        // No new question markers - this page continues current question
+                        // Find where content ends on this page
+                        const lastLineY = pageData.lines.length > 0
+                            ? pageData.lines[pageData.lines.length - 1].y
+                            : 0;
+
+                        currentQuestion.yRanges.push({
+                            pageNum: pageData.pageNum,
+                            startY: lastLineY - 50, // Start from top of content
+                            endY: lastLineY,
+                            lines: pageData.lines,
+                            viewport: pageData.viewport
+                        });
+                    } else if (markers.length > 0 && currentQuestion.yRanges.length > 0) {
+                        // End the previous question's Y range on this page
+                        const prevRange = currentQuestion.yRanges[currentQuestion.yRanges.length - 1];
+                        if (prevRange.endY === null) {
+                            // Find the Y position just before the first marker
+                            const firstMarkerLineIdx = markers[0].lineIndex;
+                            if (firstMarkerLineIdx > 0 && pageData.lines[firstMarkerLineIdx - 1]) {
+                                prevRange.endY = pageData.lines[firstMarkerLineIdx - 1].y;
+                            } else {
+                                prevRange.endY = markers[0].y + 20;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (currentQuestion) {
+                questions.push(currentQuestion);
+            }
+
+            // Fallback
+            if (questions.length === 0) {
+                for (let i = 1; i <= state.pageCount; i++) {
+                    state.questions.push({
+                        id: i,
+                        name: `第 ${i} 题`,
+                        pages: [i]
+                    });
+                }
+            } else {
+                state.questions = questions.map(q => ({
+                    id: q.id,
+                    name: q.name,
+                    yRanges: q.yRanges
+                }));
+            }
+        }
+
+        // ULTRA SIMPLE: Just find ANY content and remove everything else
+        function findContentRows(canvas, minContentHeight = 3) {
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+
+            // Scan every single pixel (step 4 for speed)
+            const contentMap = [];
+            for (let y = 0; y < height; y += 4) {
+                let hasDarkPixel = false;
+                for (let x = 0; x < width; x += 4) {
+                    const i = (y * width + x) * 4;
+                    const r = data[i], g = data[i + 1], b = data[i + 2];
+                    // EXTREME: any pixel with R < 200 is content
+                    if (r < 200 || g < 200 || b < 200) {
+                        hasDarkPixel = true;
+                        break;
+                    }
+                }
+                contentMap.push({ y, hasContent: hasDarkPixel });
+            }
+
+            // Find segments of rows with content
+            const contentRows = [];
+            let currentStart = null;
+            let lastContentY = -100;
+
+            for (let i = 0; i < contentMap.length; i++) {
+                const row = contentMap[i];
+
+                if (row.hasContent) {
+                    if (currentStart === null) {
+                        currentStart = row.y;
+                    }
+                    lastContentY = row.y;
+                } else {
+                    // Gap without content
+                    if (currentStart !== null) {
+                        const gap = row.y - lastContentY;
+                        // EXTREME: split on any gap >= 8px
+                        if (gap >= 8) {
+                            if (lastContentY - currentStart >= minContentHeight) {
+                                contentRows.push({ start: currentStart, end: lastContentY });
+                            }
+                            currentStart = null;
+                        }
+                    }
+                }
+            }
+
+            if (currentStart !== null && lastContentY - currentStart >= minContentHeight) {
+                contentRows.push({ start: currentStart, end: lastContentY });
+            }
+
+            return contentRows;
+        }
+
+        // Extract only content rows and combine with minimal padding
+        function extractCompactContent(canvas, padding = 15) {
+            const contentRows = findContentRows(canvas);
+
+            if (contentRows.length === 0) {
+                // No content found, return original
+                return canvas.toDataURL('image/png');
+            }
+
+            // Calculate total height needed
+            let totalHeight = 0;
+            for (const range of contentRows) {
+                totalHeight += (range.end - range.start);
+            }
+            // Add padding between segments
+            totalHeight += (contentRows.length - 1) * padding;
+
+            if (totalHeight <= 0) {
+                return canvas.toDataURL('image/png');
+            }
+
+            const result = document.createElement('canvas');
+            result.width = canvas.width;
+            result.height = totalHeight;
+            const ctx = result.getContext('2d');
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, result.width, result.height);
+
+            let yOffset = 0;
+            for (let i = 0; i < contentRows.length; i++) {
+                const range = contentRows[i];
+                const segmentHeight = range.end - range.start;
+
+                ctx.drawImage(
+                    canvas,
+                    0, range.start, canvas.width, segmentHeight,
+                    0, yOffset, canvas.width, segmentHeight
+                );
+
+                yOffset += segmentHeight + padding;
+            }
+
+            return result.toDataURL('image/png');
+        }
+
+        // Extract question by using text positions to determine exact bounds
+        async function extractQuestionImage(question) {
+            const scale = 2;
+            const yRanges = question.yRanges;
+
+            if (!yRanges || yRanges.length === 0) {
+                // Fallback
+                const pageNum = question.pages?.[0] || 1;
+                const page = await state.pdfDoc.getPage(pageNum);
+                const viewport = page.getViewport({ scale });
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                await page.render({ canvasContext: ctx, viewport }).promise;
+                return cropCanvas(canvas, findContentBounds(canvas));
+            }
+
+            // Process each page
+            const croppedImages = [];
+
+            for (const range of yRanges) {
+                const page = await state.pdfDoc.getPage(range.pageNum);
+                const viewport = page.getViewport({ scale });
+
+                // Render full page
+                const fullCanvas = document.createElement('canvas');
+                fullCanvas.width = viewport.width;
+                fullCanvas.height = viewport.height;
+                const ctx = fullCanvas.getContext('2d');
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, fullCanvas.width, fullCanvas.height);
+                await page.render({ canvasContext: ctx, viewport }).promise;
+
+                // Calculate bounds using text positions
+                const lines = range.lines;
+                if (lines && lines.length > 0) {
+                    // PDF Y coordinates: larger = higher on page
+                    // Convert to viewport coordinates: larger = lower on page
+                    const pdfHeight = viewport.height / scale;
+
+                    // Find topmost and bottommost Y from text positions
+                    let minTextY = Infinity;
+                    let maxTextY = -Infinity;
+
+                    for (const line of lines) {
+                        if (line.items) {
+                            for (const item of line.items) {
+                                if (item.y < minTextY) minTextY = item.y;
+                                if (item.y > maxTextY) maxTextY = item.y;
+                            }
+                        }
+                    }
+
+                    if (minTextY !== Infinity && maxTextY !== -Infinity) {
+                        // Add some padding
+                        const padding = 10;
+                        minTextY -= padding;
+                        maxTextY += padding;
+
+                        // Convert to viewport Y (inverted)
+                        let cropTop = pdfHeight - maxTextY;
+                        let cropBottom = pdfHeight - minTextY;
+
+                        // Ensure valid bounds
+                        cropTop = Math.max(0, cropTop);
+                        cropBottom = Math.min(viewport.height, cropBottom);
+
+                        if (cropBottom > cropTop) {
+                            const cropped = document.createElement('canvas');
+                            cropped.width = fullCanvas.width;
+                            cropped.height = cropBottom - cropTop;
+                            const cropCtx = cropped.getContext('2d');
+                            cropCtx.fillStyle = 'white';
+                            cropCtx.fillRect(0, 0, cropped.width, cropped.height);
+                            cropCtx.drawImage(fullCanvas,
+                                0, cropTop, fullCanvas.width, cropBottom - cropTop,
+                                0, 0, cropped.width, cropped.height);
+
+                            // Apply aggressive content extraction to remove blank spaces
+                            const compactContent = extractCompactContent(cropped, 20);
+                            croppedImages.push(compactContent);
+                            continue;
+                        }
+                    }
+                }
+
+                // Fallback: use pixel-based detection
+                const bounds = findContentBounds(fullCanvas);
+                const cropped = cropCanvas(fullCanvas, bounds);
+                // Apply aggressive content extraction
+                const compactResult = extractCompactContent(croppedCanvasToCanvas(cropped), 20);
+                croppedImages.push(compactResult);
+            }
+
+            // Combine all images with compact stitching
+            return await combineCanvasesVerticallyCompact(croppedImages);
+        }
+
+        // Convert dataURL to canvas
+        function croppedCanvasToCanvas(dataUrl) {
+            const img = new Image();
+            img.src = dataUrl;
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            return canvas;
+        }
+
+        // Combine canvases with compact spacing
+        function combineCanvasesVerticallyCompact(dataUrls, padding = 25) {
+            const images = dataUrls.map(dataUrl => {
+                const img = new Image();
+                img.src = dataUrl;
+                return img;
+            });
+
+            // Wait for all images to load
+            let loadedCount = 0;
+            return new Promise(resolve => {
+                if (images.length === 0) {
+                    resolve(createEmptyImage());
+                    return;
+                }
+
+                for (const img of images) {
+                    img.onload = () => {
+                        loadedCount++;
+                        if (loadedCount === images.length) {
+                            const combined = doCombine(images, padding);
+                            resolve(combined);
+                        }
+                    };
+                    // Handle cached images
+                    if (img.complete) {
+                        loadedCount++;
+                        if (loadedCount === images.length) {
+                            const combined = doCombine(images, padding);
+                            resolve(combined);
+                        }
+                    }
+                }
+            });
+        }
+
+        function doCombine(images, padding) {
+            const totalHeight = images.reduce((sum, img) => sum + img.height, 0);
+            const maxWidth = Math.max(...images.map(img => img.width));
+
+            const combined = document.createElement('canvas');
+            combined.width = maxWidth;
+            combined.height = totalHeight + (images.length - 1) * padding;
+            const ctx = combined.getContext('2d');
+
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, combined.width, combined.height);
+
+            let yOffset = 0;
+            for (let i = 0; i < images.length; i++) {
+                ctx.drawImage(images[i], 0, yOffset);
+                yOffset += images[i].height + padding;
+            }
+
+            // Final pass: remove any remaining large blank gaps
+            const finalResult = extractCompactContent(combined, 15);
+            return finalResult;
+        }
+
+        function createEmptyImage() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 100;
+            canvas.height = 100;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, 100, 100);
+            return canvas.toDataURL('image/png');
+        }
+
+        // Original combine function kept for compatibility
+        function combineCanvasesVertically(dataUrls) {
+            const images = dataUrls.map(dataUrl => {
+                const img = new Image();
+                img.src = dataUrl;
+                return img;
+            });
+
+            const totalHeight = images.reduce((sum, img) => sum + img.height, 0);
+            const maxWidth = Math.max(...images.map(img => img.width));
+
+            const combined = document.createElement('canvas');
+            combined.width = maxWidth;
+            combined.height = totalHeight;
+            const ctx = combined.getContext('2d');
+
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, combined.width, combined.height);
+
+            let yOffset = 0;
+            for (const img of images) {
+                ctx.drawImage(img, 0, yOffset);
+                yOffset += img.height;
+            }
+
+            return combined.toDataURL('image/png');
+        }
+
+        // Extract question images with content cropping
+        async function extractQuestions() {
+            state.isProcessing = true;
+            elements.extractBtn.disabled = true;
+            elements.progressSection.classList.remove('hidden');
+            elements.saveSection.classList.remove('hidden');
+
+            elements.resultsList.innerHTML = '';
+            state.extractedImages = [];
+
+            try {
+                setProgress(10, '正在分析试卷结构...');
+                await detectQuestions();
+
+                setProgress(30, `发现 ${state.questions.length} 道题目，正在提取...`);
+
+                for (let i = 0; i < state.questions.length; i++) {
+                    const question = state.questions[i];
+                    const progress = 30 + ((i + 1) / state.questions.length) * 60;
+                    setProgress(progress, `正在提取 ${question.name}...`);
+
+                    // Create result item
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'result-item';
+
+                    const thumbImg = document.createElement('img');
+                    thumbImg.className = 'thumb';
+                    thumbImg.style.objectFit = 'contain';
+
+                    resultItem.innerHTML = `
+                        <div class="num">${question.id}</div>
+                        <div class="info">
+                            <div class="title">${question.name}</div>
+                            <div class="meta">页码: ${question.pages.join(', ')}</div>
+                        </div>
+                    `;
+                    resultItem.prepend(thumbImg);
+                    elements.resultsList.appendChild(resultItem);
+
+                    // Extract image for this question
+                    const imageData = await extractQuestionImage(question);
+                    state.extractedImages.push({
+                        id: question.id,
+                        name: question.name,
+                        data: imageData,
+                        filename: `${state.pdfName}_Q${question.id}.png`
+                    });
+
+                    // Update thumbnail
+                    thumbImg.src = imageData;
+
+                    // Make thumbnail clickable to view full size
+                    thumbImg.style.cursor = 'pointer';
+                    thumbImg.addEventListener('click', () => {
+                        const img = document.createElement('img');
+                        img.src = imageData;
+                        showModal(question.name, img);
+                    });
+
+                    resultItem.querySelector('.title').addEventListener('click', () => {
+                        const img = document.createElement('img');
+                        img.src = imageData;
+                        showModal(question.name, img);
+                    });
+                }
+
+                setProgress(100, '提取完成！');
+                showToast(`成功提取 ${state.extractedImages.length} 道题目`, 'success');
+
+                elements.saveBtn.disabled = false;
+                elements.downloadBtn.disabled = false;
+
+            } catch (error) {
+                console.error('提取失败:', error);
+                showToast('题目提取失败: ' + error.message, 'error');
+            } finally {
+                state.isProcessing = false;
+                elements.extractBtn.disabled = false;
+            }
+        }
+
+        // Helper functions for content extraction
+        function findContentBounds(canvas, margin = 20) {
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+
+            let minX = width, maxX = 0;
+            let minY = height, maxY = 0;
+
+            const isWhite = (r, g, b) => r > 250 && g > 250 && b > 250;
+
+            // Scan with step for performance
+            const step = 4;
+
+            for (let y = 0; y < height; y += step) {
+                for (let x = 0; x < width; x += step) {
+                    const i = (y * width + x) * 4;
+                    const r = data[i], g = data[i + 1], b = data[i + 2];
+
+                    if (!isWhite(r, g, b)) {
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+                }
+            }
+
+            // Apply margin and ensure bounds are valid
+            minX = Math.max(0, minX - margin);
+            minY = Math.max(0, minY - margin);
+            maxX = Math.min(width, maxX + margin);
+            maxY = Math.min(height, maxY + margin);
+
+            if (minX >= maxX || minY >= maxY) {
+                return { x: 0, y: 0, width, height };
+            }
+
+            return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+        }
+
+        function cropCanvas(canvas, bounds) {
+            const cropped = document.createElement('canvas');
+            cropped.width = bounds.width;
+            cropped.height = bounds.height;
+            const ctx = cropped.getContext('2d');
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, cropped.width, cropped.height);
+            ctx.drawImage(
+                canvas,
+                bounds.x, bounds.y, bounds.width, bounds.height,
+                0, 0, bounds.width, bounds.height
+            );
+            return cropped.toDataURL('image/png');
+        }
+
+        async function selectFolder() {
+            if (!('showDirectoryPicker' in window)) {
+                showToast('浏览器不支持选择文件夹，将使用批量下载', 'info');
+                return;
+            }
+
+            try {
+                const dirHandle = await window.showDirectoryPicker();
+                state.selectedFolder = dirHandle;
+                elements.folderPath.classList.remove('hidden');
+                elements.folderName.textContent = dirHandle.name;
+                elements.saveBtn.disabled = false;
+                showToast('文件夹选择成功', 'success');
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('选择文件夹失败:', error);
+                    showToast('选择文件夹失败', 'error');
+                }
+            }
+        }
+
+        async function saveToFolder() {
+            if (!state.selectedFolder) {
+                showToast('请先选择保存文件夹', 'error');
+                return;
+            }
+
+            elements.saveBtn.disabled = true;
+            elements.saveBtn.innerHTML = '<div class="spinner"></div> 保存中...';
+
+            try {
+                for (let i = 0; i < state.extractedImages.length; i++) {
+                    const img = state.extractedImages[i];
+                    setProgress(((i + 1) / state.extractedImages.length) * 100, `正在保存 ${img.filename}...`);
+
+                    const response = await fetch(img.data);
+                    const blob = await response.blob();
+
+                    const fileHandle = await state.selectedFolder.getFileHandle(img.filename, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                }
+
+                setProgress(100, '保存完成！');
+                showToast(`已成功保存 ${state.extractedImages.length} 个文件`, 'success');
+            } catch (error) {
+                console.error('保存失败:', error);
+                showToast('保存失败: ' + error.message, 'error');
+            } finally {
+                elements.saveBtn.disabled = false;
+                elements.saveBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    开始保存
+                `;
+            }
+        }
+
+        async function downloadAll() {
+            if (state.extractedImages.length === 0) {
+                showToast('没有可下载的图片', 'error');
+                return;
+            }
+
+            for (const img of state.extractedImages) {
+                const link = document.createElement('a');
+                link.href = img.data;
+                link.download = img.filename;
+                link.click();
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+
+            showToast('开始下载', 'success');
+        }
+
+        // Event Listeners
+        elements.uploadArea.addEventListener('click', () => elements.fileInput.click());
+        elements.uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            elements.uploadArea.classList.add('dragover');
+        });
+        elements.uploadArea.addEventListener('dragleave', () => {
+            elements.uploadArea.classList.remove('dragover');
+        });
+        elements.uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            elements.uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            handleFileUpload(file);
+        });
+
+        elements.fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            handleFileUpload(file);
+        });
+
+        elements.removeFile.addEventListener('click', () => {
+            state.pdfFile = null;
+            state.pdfDoc = null;
+            state.pageCanvases = [];
+            state.questions = [];
+            state.extractedImages = [];
+            state.selectedFolder = null;
+            elements.fileInput.value = '';
+            elements.fileInfo.classList.add('hidden');
+            elements.previewSection.classList.add('hidden');
+            elements.settingsSection.classList.add('hidden');
+            elements.progressSection.classList.add('hidden');
+            elements.saveSection.classList.add('hidden');
+            elements.folderPath.classList.add('hidden');
+        });
+
+        elements.extractBtn.addEventListener('click', extractQuestions);
+        elements.selectFolderBtn.addEventListener('click', selectFolder);
+        elements.saveBtn.addEventListener('click', saveToFolder);
+        elements.downloadBtn.addEventListener('click', downloadAll);
+        elements.modalClose.addEventListener('click', hideModal);
+        elements.modalOverlay.addEventListener('click', (e) => {
+            if (e.target === elements.modalOverlay) hideModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') hideModal();
+        });
+    </script>
+</body>
+</html>
