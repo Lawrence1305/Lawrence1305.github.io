@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-04T08:28:20+00:00",
+  "generatedAt": "2026-08-04T08:30:43+00:00",
   "season": {
     "cambridge": "October/November 2026 Series",
     "oxfordaqa": "2026 May/June Series",
@@ -21,5 +21,9 @@
       "ialTimetable": "https://qualifications.pearson.com/content/dam/pdf/Support/Examination-timetables-for-International-Advanced-Levels/ial-october2026-final.xlsx"
     }
   },
-  "stale": {}
+  "stale": {
+    "cambridge": true,
+    "oxfordaqa": true,
+    "pearson": true
+  }
 }
