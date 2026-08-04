@@ -1,4 +1,4 @@
-# scripts/sync-and-push.ps1
+﻿# scripts/sync-and-push.ps1
 # 一键本地更新:同步考试数据 -> 有变化则提交 -> 推送到 GitHub(推送后自动触发线上部署)
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
@@ -14,7 +14,7 @@ function Test-Deps([string]$py) {
 $Py = $null
 if ($SystemPy -and (Test-Deps $SystemPy)) {
     $Py = $SystemPy
-} elseif (Test-Path $BundledPy -and (Test-Deps $BundledPy)) {
+} elseif ((Test-Path $BundledPy) -and (Test-Deps $BundledPy)) {
     $Py = $BundledPy
 } else {
     Write-Host "未找到可用的 Python(需要 pdfplumber/requests/openpyxl)。" -ForegroundColor Red
