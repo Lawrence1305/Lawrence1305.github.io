@@ -42,3 +42,4 @@ projects/Scene_Splitter/backend/storage/
 # python caches
 __pycache__/
 .pytest_cache/
+.venv/
