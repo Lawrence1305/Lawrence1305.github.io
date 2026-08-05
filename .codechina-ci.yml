@@ -1,0 +1,50 @@
+# GitCode 流水线配置(.codechina-ci.yml,GitLab CI 兼容语法)
+#
+# 用途:
+#   1) 在 GitCode 的国内构建机上定时运行数据同步,
+#      从而能够访问 britishcouncil.cn(海外 GitHub runner 连不上)。
+#   2) 构建 Astro 站点并发布到 GitCode Pages。
+#
+# 使用前需要确认/配置:
+#   1. 首次运行先验证 GitCode 共享 runner 能否访问 britishcouncil.cn。
+#   2. CI 推送提交回仓库需要 write_repository 权限:GitCode 的
+#      CI_JOB_TOKEN 默认支持;若不行,在 CI 变量里配置 GIT_PUSH_TOKEN,
+#      并把下面 git push 的 origin 换成带 token 的 URL。
+#   3. GitCode Pages 默认部署 public 目录,因此构建后把 dist 内容拷入 public。
+#   4. 定时任务在网页 DevOps > 流水线计划 里创建,
+#      cron 示例(每天 08:00):0 8 * * *
+
+stages:
+  - sync
+  - deploy
+
+variables:
+  GIT_DEPTH: "50"
+
+sync-data:
+  stage: sync
+  image: python:3.12
+  only:
+    - schedules
+  script:
+    - pip install -r scripts/requirements.txt
+    - python scripts/sync_exams.py || echo "sync finished with warnings"
+    - git config user.name "gitcode-bot"
+    - git config user.email "gitcode-bot@users.noreply.gitcode.com"
+    - git add src/data/exams.json src/data/meta.json
+    - if git diff --cached --quiet; then echo "no data changes"; else git commit -m "chore: update exam timetable data"; fi
+    - git push origin main || (git pull --no-edit --rebase origin main && git push origin main) || echo "push failed, will retry next run"
+
+pages:
+  stage: deploy
+  image: node:20
+  only:
+    - main
+  script:
+    - npm ci
+    - npm run build
+    - rm -rf public/*
+    - cp -r dist/. public/
+  artifacts:
+    paths:
+      - public
